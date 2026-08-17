@@ -1,6 +1,6 @@
-# 🥗 OrderIt - Gourmet Food Delivery Platform
+# 🥗 SmartCraving - An AI-Powered Food Ordering and Restaurant Intelligence Platform
 
-**OrderIt** is a full-stack, state-of-the-art food ordering and restaurant management platform built using React 18, Vite, Redux Toolkit, Node.js, Express, and MongoDB.
+**SmartCraving** is a full-stack, state-of-the-art food ordering and restaurant management platform built using React 18, Vite, Redux Toolkit, Node.js, Express, and MongoDB.
 
 ---
 
