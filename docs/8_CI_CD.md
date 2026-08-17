@@ -25,7 +25,7 @@ The frontend job runs on Ubuntu with Node.js 20 and performs:
 
 1. Repository checkout.
 2. npm dependency caching using `frontend/package-lock.json`.
-3. Reproducible dependency installation with `npm ci`.
+3. Dependency installation with `npm install --legacy-peer-deps --no-audit --no-fund`.
 4. ESLint through `npm run lint`.
 5. Production build through `npm run build`.
 
@@ -59,7 +59,7 @@ Run the same checks locally before pushing:
 
 ```bash
 cd frontend
-npm ci
+npm install --legacy-peer-deps --no-audit --no-fund
 npm run lint
 npm run build
 ```
@@ -87,7 +87,18 @@ The current pipeline intentionally does not run:
 
 These checks need isolated test resources, credentials, and cleanup rules. They should be added as separate integration or deployment workflows rather than making every code push dependent on live third-party services.
 
-## 7. Branch protection recommendation
+## 7. Frontend lockfile follow-up
+
+The frontend `package-lock.json` currently lacks several transitive dependency entries, so `npm ci` fails with “Missing ... from lock file”. The `ERESOLVE` messages are non-fatal peer-dependency warnings caused mainly by the legacy `mdbreact` package and React 18. Regenerate and commit the lockfile from a network-enabled development environment:
+
+```bash
+cd frontend
+npm install --legacy-peer-deps --ignore-scripts
+```
+
+After confirming `npm ci` succeeds in a clean checkout, change the frontend CI install step back to `npm ci`.
+
+## 8. Branch protection recommendation
 
 For the `main` branch, require the following status checks before merging:
 
