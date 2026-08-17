@@ -38,6 +38,10 @@ EMAIL_PORT=587
 EMAIL_USERNAME=your-gmail-address@gmail.com
 EMAIL_PASSWORD=your-16-character-google-app-password
 EMAIL_FROM=your-gmail-address@gmail.com
+# Optional alternative to SMTP. If set, password-reset emails use Resend.
+RESEND_API_KEY=
+# Optional explicit frontend origin used in reset links.
+RESET_URL_ORIGIN=http://localhost:5173
 STRIPE_SECRET_KEY=sk_test_replace_me
 STRIPE_API_KEY=pk_test_replace_me
 GROQ_API_KEY=
@@ -96,5 +100,5 @@ node --check server.js
 | Database failure | Check `DB_LOCAL_URI`, network access, and credentials. |
 | Login does not persist | Confirm Axios `withCredentials`, backend CORS credentials, and cookie settings. |
 | Stripe checkout fails | Confirm test keys and valid item image URLs. |
-| Password reset fails | Verify SMTP values and the reset URL’s frontend origin. |
+| Password reset fails | Verify `RESEND_API_KEY` or all `EMAIL_*` values, plus `RESET_URL_ORIGIN` / `FRONTEND_URL`. |
 | AI generation fails | Confirm `GROQ_API_KEY`; review analysis has a local fallback, food generation does not. |

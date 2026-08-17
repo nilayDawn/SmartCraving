@@ -18,17 +18,28 @@ const dotenv = require("dotenv");
 dotenv.config({ path: "./config/config.env" });
 
 if (process.env.NODE_ENV === "PRODUCTION") {
-  const requiredProductionEnv = [
-    "FRONTEND_URL",
+  const requiredProductionEnv = ["FRONTEND_URL"];
+  const missingProductionEnv = requiredProductionEnv.filter(
+    (name) => !process.env[name] || !process.env[name].trim()
+  );
+
+  const smtpVariables = [
     "EMAIL_HOST",
     "EMAIL_PORT",
     "EMAIL_USERNAME",
     "EMAIL_PASSWORD",
     "EMAIL_FROM",
   ];
-  const missingProductionEnv = requiredProductionEnv.filter(
-    (name) => !process.env[name] || !process.env[name].trim()
+  const hasSmtpConfig = smtpVariables.every(
+    (name) => process.env[name] && process.env[name].trim()
   );
+  const hasResendConfig = Boolean(process.env.RESEND_API_KEY?.trim());
+
+  if (!hasSmtpConfig && !hasResendConfig) {
+    missingProductionEnv.push(
+      "RESEND_API_KEY (or complete EMAIL_HOST/EMAIL_PORT/EMAIL_USERNAME/EMAIL_PASSWORD/EMAIL_FROM)"
+    );
+  }
 
   if (missingProductionEnv.length) {
     throw new Error(

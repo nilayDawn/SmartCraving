@@ -40,7 +40,9 @@ Return JSON in this EXACT format:
 }
 `;
 
-  if (process.env.GROQ_API_KEY) {
+  const groqApiKey = process.env.GROQ_API_KEY?.trim();
+
+  if (groqApiKey) {
     try {
       const response = await axios.post(
         "https://api.groq.com/openai/v1/chat/completions",
@@ -52,7 +54,7 @@ Return JSON in this EXACT format:
         },
         {
           headers: {
-            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            Authorization: `Bearer ${groqApiKey}`,
             "Content-Type": "application/json",
           },
           timeout: 7000,
@@ -66,7 +68,17 @@ Return JSON in this EXACT format:
         return parsed;
       }
     } catch (err) {
-      console.warn("Groq AI API Call failed, using smart fallback generator:", err.message);
+      const status = err.response?.status;
+      if (status === 401) {
+        console.warn(
+          "Groq API rejected GROQ_API_KEY (401). Replace the key in backend/config/config.env and restart the backend; using local fallback generator."
+        );
+      } else {
+        console.warn(
+          "Groq AI API Call failed, using smart fallback generator:",
+          err.message
+        );
+      }
     }
   }
 

@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const axios = require("axios");
 const pug = require("pug");
 const htmlToText = require("html-to-text");
 
@@ -20,7 +21,9 @@ module.exports = class Email {
     this.to = user.email;
     this.firstName = user.name.split(" ")[0];
     this.url = url;
-    this.from = process.env.EMAIL_FROM || process.env.EMAIL_USERNAME;
+    this.from =
+      process.env.EMAIL_FROM ||
+      (process.env.RESEND_API_KEY ? "onboarding@resend.dev" : process.env.EMAIL_USERNAME);
   }
 
   async send(template, subject) {
@@ -29,6 +32,29 @@ module.exports = class Email {
       url: this.url,
       subject,
     });
+
+    const resendApiKey = process.env.RESEND_API_KEY?.trim();
+
+    if (resendApiKey) {
+      await axios.post(
+        "https://api.resend.com/emails",
+        {
+          from: this.from,
+          to: [this.to],
+          subject,
+          html,
+          text: htmlToText.convert(html),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 15000,
+        }
+      );
+      return;
+    }
 
     await transporter.sendMail({
       from: this.from,

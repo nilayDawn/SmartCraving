@@ -241,7 +241,10 @@ exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
 
   try {
 
-    const frontendURL = (process.env.FRONTEND_URL || "").trim().replace(/\/+$/, "");
+    const frontendURL = (
+      process.env.RESET_URL_ORIGIN ||
+      (process.env.FRONTEND_URL || "").split(",")[0]
+    ).trim().replace(/\/+$/, "");
 
     if (!frontendURL) {
       throw new Error("FRONTEND_URL is not configured");
