@@ -1,5 +1,27 @@
 const axios = require("axios");
 
+// In-Memory Cache for AI Review Sentiment Analysis to prevent redundant API calls
+const reviewSentimentCache = new Map();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 Hour TTL
+
+// Helper function to create a unique fingerprint hash for a reviews array
+const computeReviewsHash = (reviews = []) => {
+  if (!reviews || !reviews.length) return "empty";
+  const signature = reviews
+    .map((r) => `${r.name || ""}_${r.rating || 0}_${(r.Comment || "").trim()}`)
+    .sort()
+    .join("||");
+
+  // Simple string hash algorithm for fast lookup
+  let hash = 0;
+  for (let i = 0; i < signature.length; i++) {
+    const char = signature.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return `hash_${hash}`;
+};
+
 const buildFallbackSummary = (reviews = []) => {
   const averageRating = reviews.length
     ? reviews.reduce((total, review) => total + Number(review.rating || 0), 0) / reviews.length
@@ -24,10 +46,24 @@ const buildFallbackSummary = (reviews = []) => {
 };
 
 exports.analyzeReviewsWithAI = async (reviews) => {
+  if (!reviews || !reviews.length) {
+    return buildFallbackSummary([]);
+  }
+
+  const cacheKey = computeReviewsHash(reviews);
+  const cachedEntry = reviewSentimentCache.get(cacheKey);
+
+  if (cachedEntry && Date.now() - cachedEntry.timestamp < CACHE_TTL_MS) {
+    console.log(`⚡ [AI CACHE HIT] Serving cached review sentiment for key: ${cacheKey}`);
+    return cachedEntry.result;
+  }
+
+  console.log(`🔍 [AI CACHE MISS] Analyzing ${reviews.length} reviews with AI for key: ${cacheKey}`);
+
+  let result;
+
   try {
-    const reviewTexts = reviews.map(
-      (review) => review.Comment
-    );
+    const reviewTexts = reviews.map((review) => review.Comment).filter(Boolean);
 
     const prompt = `
 Analyze all restaurant reviews together.
@@ -52,52 +88,39 @@ Reviews:
 ${reviewTexts.join("\n")}
 `;
 
-    const response = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: "llama-3.1-8b-instant",
-        messages: [
-          {
-            role: "user",
-            content: prompt,
+    if (process.env.GROQ_API_KEY) {
+      const response = await axios.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.3,
+          response_format: { type: "json_object" },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            "Content-Type": "application/json",
           },
-        ],
-        temperature: 0.3,
-
-        response_format: {
-          type: "json_object",
-        },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const content =
-      response.data.choices[0].message.content;
-
-    console.log("AI RESPONSE:");
-    console.log(content);
-
-    try {
-      return JSON.parse(content);
-    } catch (parseError) {
-      console.log(
-        "JSON Parse Failed:",
-        parseError.message
+          timeout: 8000,
+        }
       );
 
-      return buildFallbackSummary(reviews);
+      const content = response.data.choices[0].message.content;
+      result = JSON.parse(content);
+    } else {
+      result = buildFallbackSummary(reviews);
     }
   } catch (error) {
-    console.error(
-      "AI Review Analysis Error:",
-      error.response?.data || error.message
-    );
-
-    return buildFallbackSummary(reviews);
+    console.error("AI Review Analysis Error, fallback invoked:", error.message);
+    result = buildFallbackSummary(reviews);
   }
+
+  // Store in cache
+  reviewSentimentCache.set(cacheKey, {
+    result,
+    timestamp: Date.now(),
+  });
+
+  return result;
 };

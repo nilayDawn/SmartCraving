@@ -29,8 +29,9 @@
 - **Resilient Image Handling**: Seamlessly handles Base64 Data URIs and external URL links with Cloudinary upload integration and automatic fallbacks.
 - **Automatic Menu Linkage**: Adding a food item automatically links it to the restaurant's menu collection under the specified category.
 
-### 🤖 AI-Powered Restaurant Insights
-- Automated review sentiment analysis (`positive`, `negative`, `mixed`) and key summary bullets powered by Gemini AI services.
+### 🤖 AI-Powered Restaurant Insights & Sentiment Caching
+- **Automated Review Sentiment Analysis**: Generates guest sentiment (`positive`, `negative`, `mixed`), key summary bullets, and top mention tags.
+- **In-Memory Review Sentiment Caching**: Implemented a content-hash fingerprint cache (`reviewSentimentCache`) with a 1-hour TTL. Re-uses sentiment analysis results for unchanged reviews to eliminate redundant API calls and optimize latency.
 
 ### 🛒 Complete E-Commerce Experience
 - **Interactive Restaurant Catalog**: Filtering by category, vegetarian preferences, and search keywords.

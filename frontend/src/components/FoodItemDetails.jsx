@@ -124,6 +124,10 @@ const FoodItemDetails = () => {
               className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
               src={food.images?.[0]?.url || "/images/template.jpeg"}
               alt={food.name}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800";
+              }}
             />
             {food.ratings > 0 && (
               <div className="absolute top-4 left-4 inline-flex items-center gap-1 rounded-2xl bg-white/90 px-3.5 py-1.5 text-xs font-black text-slate-900 shadow-md backdrop-blur-md">

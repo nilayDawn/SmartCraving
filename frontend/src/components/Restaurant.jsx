@@ -56,6 +56,10 @@ const Restaurant = ({ restaurant }) => {
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               src={restaurant.images?.[0]?.url || "/images/template.jpeg"}
               alt={restaurant.name}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800";
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent opacity-80" />
           </Link>

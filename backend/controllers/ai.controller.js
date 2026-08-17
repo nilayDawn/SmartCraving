@@ -6,27 +6,27 @@ const catchAsyncErrors = require("../middlewares/catchAsyncErrors");
 const Restaurant = require("../models/restaurant");
 const {analyzeReviewsWithAI}= require("../services/aiReviewAnalyzer")
 
-exports.generateFoodAI = catchAsync(async (req,res) =>{
-    const {name,category,spiceLevel,price} = req.body;
-    if(!name || !category || !spiceLevel || !price){
-        return res.status(400).json({
-            success:false,
-            message:"name, category,spiceLevel and price are required"
-        })
-    }
+exports.generateFoodAI = catchAsync(async (req, res) => {
+  const { name, category, spiceLevel, price } = req.body;
+  if (!name) {
+    return res.status(400).json({
+      success: false,
+      message: "Please enter the Dish Name before generating AI description.",
+    });
+  }
 
-    const aiData = await aiService.generateDishDescription({
-        name,
-        category,spiceLevel,
-        price
-    })
+  const aiData = await aiService.generateDishDescription({
+    name,
+    category: category || "Main Course",
+    spiceLevel: spiceLevel || "Medium",
+    price: price || 10,
+  });
 
-    res.status(200).json({
-        success:true,
-        data:aiData,
-    })
-}
-)
+  res.status(200).json({
+    success: true,
+    data: aiData,
+  });
+});
 
 exports.generateAndSaveFoodAI = catchAsync(async(req,res) =>{
     const {foodId} = req.params;

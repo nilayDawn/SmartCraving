@@ -3,6 +3,15 @@ import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../../utils/api";
 
+const formatGDriveUrl = (url) => {
+  if (!url) return "";
+  const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+  }
+  return url;
+};
+
 const AddRestaurant = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -15,7 +24,7 @@ const AddRestaurant = () => {
     longitude: 77.5946,
   });
 
-  // Image handling: Direct File Upload vs Image URL Link
+  // Image handling: Direct File Upload vs Google Drive Photo Link
   const [imageMode, setImageMode] = useState("file"); // 'file' or 'url'
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
@@ -51,10 +60,11 @@ const AddRestaurant = () => {
       return;
     }
 
-    const finalImage = imageMode === "file" ? photoFile : imageUrl;
+    const formattedLink = formatGDriveUrl(imageUrl);
+    const finalImage = imageMode === "file" ? photoFile : formattedLink;
 
     if (!finalImage) {
-      toast.error("Please upload a photo directly or provide an image URL link");
+      toast.error("Please upload a photo directly or provide a Google Drive photo link");
       return;
     }
 
@@ -93,7 +103,7 @@ const AddRestaurant = () => {
             ➕ Create New Restaurant
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Admin panel: Add a store with direct photo upload beside image URL link.
+            Admin panel: Add store with direct photo upload beside Google Drive link.
           </p>
         </div>
         <Link
@@ -153,7 +163,7 @@ const AddRestaurant = () => {
             </label>
           </div>
 
-          {/* Photo Upload Section: Direct Photo Upload beside Link */}
+          {/* Photo Upload Section: Direct Photo Upload beside Google Drive Link */}
           <div className="rounded-3xl border border-emerald-100 bg-emerald-50/40 p-6">
             <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
@@ -161,7 +171,7 @@ const AddRestaurant = () => {
                   <span>📸</span> Restaurant Photo Upload
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Upload photo directly from device or provide an image link beside it.
+                  Upload photo directly from device or provide a Google Drive photo link beside it.
                 </p>
               </div>
 
@@ -187,7 +197,7 @@ const AddRestaurant = () => {
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  🔗 Image URL Link
+                  🔗 Google Drive Link
                 </button>
               </div>
             </div>
@@ -216,11 +226,11 @@ const AddRestaurant = () => {
                   className="w-full text-xs text-slate-500 file:mr-4 file:rounded-xl file:border-0 file:bg-emerald-100 file:px-4 file:py-2 file:text-xs file:font-bold file:text-emerald-700 hover:file:bg-emerald-200"
                 />
                 <p className="mt-2 text-[11px] text-slate-400">
-                  PNG, JPG, WEBP formats supported. Converts directly for store gallery.
+                  PNG, JPG, WEBP formats supported. Instant live preview.
                 </p>
               </div>
 
-              {/* Option B: Image URL Link */}
+              {/* Option B: Google Drive Photo Link */}
               <div
                 className={`rounded-2xl border-2 p-5 transition ${
                   imageMode === "url"
@@ -230,9 +240,9 @@ const AddRestaurant = () => {
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-extrabold uppercase tracking-wider text-teal-700">
-                    Option B: Image URL Link
+                    Option B: Google Drive Link
                   </span>
-                  <span className="text-[10px] font-bold text-slate-400">External URL</span>
+                  <span className="text-[10px] font-bold text-slate-400">GDrive Link</span>
                 </div>
                 <input
                   type="url"
@@ -242,11 +252,11 @@ const AddRestaurant = () => {
                     setImageMode("url");
                   }}
                   onFocus={() => setImageMode("url")}
-                  placeholder="https://images.unsplash.com/photo-..."
+                  placeholder="Paste Google Drive photo link (e.g. https://drive.google.com/file/d/1A2B3C...)"
                   className="form-control text-xs"
                 />
                 <p className="mt-2 text-[11px] text-slate-400">
-                  Paste direct link to online image.
+                  Paste Google Drive shareable photo link. Auto-converts for display.
                 </p>
               </div>
             </div>

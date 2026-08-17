@@ -8,6 +8,15 @@ import Loader from "./layout/Loader";
 import Message from "./Message";
 import axios from "axios";
 
+const formatGDriveUrl = (url) => {
+  if (!url) return "";
+  const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+  }
+  return url;
+};
+
 const Menu = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
@@ -33,6 +42,26 @@ const Menu = () => {
     stock: "",
     imageUrl: "",
   });
+
+  // Dual Image Upload Handling: Direct Photo File Upload vs Google Drive Photo Link
+  const [imageMode, setImageMode] = useState("file"); // 'file' or 'url'
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.readyState === 2) {
+          setPhotoPreview(reader.result);
+          setPhotoFile(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   useEffect(() => {
     dispatch(getMenus(id));
@@ -67,11 +96,16 @@ const Menu = () => {
     e.preventDefault();
     setCreatingFood(true);
     try {
+      const formattedLink = formatGDriveUrl(imageUrl);
+      const finalImage = imageMode === "file" ? photoFile : formattedLink;
+
       const payload = {
         ...newFood,
         price: parseFloat(newFood.price) || 0,
         stock: parseInt(newFood.stock) || 0,
         restaurant: id,
+        image: finalImage,
+        imageUrl: finalImage,
       };
 
       const { data } = await axios.post("/api/v1/eats/item", payload, {
@@ -91,6 +125,9 @@ const Menu = () => {
         stock: "",
         imageUrl: "",
       });
+      setPhotoFile(null);
+      setPhotoPreview("");
+      setImageUrl("");
 
       return created;
     } catch (err) {
@@ -331,7 +368,7 @@ const Menu = () => {
                       setAiGenerating(true);
                       try {
                         const { data } = await axios.post(
-                          "/api/v1/ai/generate-food-ai",
+                          "/api/v1/ai/generate-food",
                           {
                             name: newFood.name,
                             category: itemToAdd.category || "",
@@ -340,7 +377,9 @@ const Menu = () => {
                           },
                           { withCredentials: true }
                         );
-                        setNewFood({ ...newFood, description: data.data.description });
+                        if (data?.data?.description) {
+                          setNewFood({ ...newFood, description: data.data.description });
+                        }
                       } catch (err) {
                         console.error(err);
                       } finally {
@@ -361,28 +400,102 @@ const Menu = () => {
                 />
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">Stock Count</label>
-                  <input
-                    type="number"
-                    placeholder="25"
-                    value={newFood.stock}
-                    onChange={(e) => setNewFood({ ...newFood, stock: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white"
-                    required
-                  />
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">Stock Count</label>
+                <input
+                  type="number"
+                  placeholder="50"
+                  value={newFood.stock}
+                  onChange={(e) => setNewFood({ ...newFood, stock: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white"
+                  required
+                />
+              </div>
+
+              {/* Photo Upload Section: Direct Photo Upload Beside Link */}
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Dish Photo Upload</span>
+                  <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setImageMode("file")}
+                      className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition ${
+                        imageMode === "file" ? "bg-emerald-600 text-white" : "text-slate-600"
+                      }`}
+                    >
+                      📁 Direct Photo Upload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageMode("url")}
+                      className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition ${
+                        imageMode === "url" ? "bg-emerald-600 text-white" : "text-slate-600"
+                      }`}
+                    >
+                      🔗 Google Drive Link
+                    </button>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">Image URL</label>
-                  <input
-                    type="text"
-                    placeholder="https://..."
-                    value={newFood.imageUrl}
-                    onChange={(e) => setNewFood({ ...newFood, imageUrl: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white"
-                  />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {/* Option A: Direct File Upload */}
+                  <div
+                    className={`rounded-xl border p-3 transition ${
+                      imageMode === "file" ? "border-emerald-500 bg-white shadow-sm ring-2 ring-emerald-500/10" : "border-slate-200 opacity-60"
+                    }`}
+                  >
+                    <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">Option A: Direct Upload</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      onClick={() => setImageMode("file")}
+                      className="w-full text-[11px] text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-emerald-100 file:px-2.5 file:py-1 file:text-[11px] file:font-bold file:text-emerald-700 hover:file:bg-emerald-200"
+                    />
+                  </div>
+
+                  {/* Option B: Google Drive Photo Link */}
+                  <div
+                    className={`rounded-xl border p-3 transition ${
+                      imageMode === "url" ? "border-emerald-500 bg-white shadow-sm ring-2 ring-emerald-500/10" : "border-slate-200 opacity-60"
+                    }`}
+                  >
+                    <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-teal-700">Option B: Google Drive Link</label>
+                    <input
+                      type="url"
+                      placeholder="Paste Google Drive photo link (e.g. https://drive.google.com/file/d/1A2B3C...)"
+                      value={imageUrl}
+                      onChange={(e) => {
+                        setImageUrl(e.target.value);
+                        setImageMode("url");
+                      }}
+                      onFocus={() => setImageMode("url")}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Live Image Preview */}
+                <div className="mt-3 flex h-32 w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-inner">
+                  {imageMode === "file" && photoPreview ? (
+                    <img src={photoPreview} alt="Direct Upload Preview" className="h-full w-full object-cover" />
+                  ) : imageMode === "url" && imageUrl ? (
+                    <img
+                      src={formatGDriveUrl(imageUrl)}
+                      alt="URL Link Preview"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800";
+                      }}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-center">
+                      <span className="text-xl">🍲</span>
+                      <p className="text-[11px] text-slate-400 font-medium">No dish photo selected</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

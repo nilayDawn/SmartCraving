@@ -47,8 +47,10 @@ Normal catalogue order: create restaurant, create linked menu, create linked foo
 
 1. Client submits `name`, `rating`, and `Comment`.
 2. Backend appends the review and recalculates count/average.
-3. Backend calls Groq analysis and stores sentiment, summary bullets, and top mentions.
-4. If AI fails, the review is still saved; cached AI fields are not replaced.
+3. Backend computes a content-hash fingerprint (`computeReviewsHash`) of the reviews array and checks the in-memory `reviewSentimentCache`.
+4. On **Cache Hit** (valid 1-hour TTL), cached sentiment (`sentiment`, `summaryBullets`, `topMentions`) is returned immediately.
+5. On **Cache Miss**, backend calls Groq analysis, caches the JSON response, and stores sentiment, summary bullets, and top mentions.
+6. If external AI fails, the system uses a smart local heuristic analyzer fallback to guarantee instant summary generation.
 
 ### Food metadata
 
