@@ -30,7 +30,10 @@ const corsOptions = {
     // 1. Allow non-browser requests (Postman, health checks, server-to-server)
     if (!origin) return callback(null, true);
 
-    const isAllowed = allowedOrigins.includes(origin);
+    const isAllowed =
+      allowedOrigins.includes(origin) ||
+      origin.endsWith(".vercel.app") ||
+      origin.endsWith(".onrender.com");
 
     if (isAllowed) {
       return callback(null, true);
