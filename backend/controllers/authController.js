@@ -225,10 +225,14 @@ exports.updateProfile = catchAsyncErrors(async (req, res, next) => {
 // Forgot Password
 exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
 
-  const user = await User.findOne({ email: req.body.email });
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const user = await User.findOne({ email });
 
   if (!user) {
-    return next(new ErrorHandler("There is no user with email address .", 404));
+    return res.status(200).json({
+      status: "success",
+      message: "If an account exists for that email, a reset link has been sent.",
+    });
   }
 
   const resetToken = user.createPasswordResetToken();
@@ -237,7 +241,13 @@ exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
 
   try {
 
-    const resetURL = `${process.env.FRONTEND_URL}/users/resetPassword/${resetToken}`;
+    const frontendURL = (process.env.FRONTEND_URL || "").trim().replace(/\/+$/, "");
+
+    if (!frontendURL) {
+      throw new Error("FRONTEND_URL is not configured");
+    }
+
+    const resetURL = `${frontendURL}/users/resetPassword/${resetToken}`;
 
     await new Email(user, resetURL).sendPasswordReset();
 
@@ -291,7 +301,10 @@ exports.resetPassword = catchAsyncErrors(async (req, res, next) => {
 
   await user.save();
 
-  sendToken(user, 200, res);
+  res.status(200).json({
+    success: true,
+    message: "Password reset successfully. Please log in again.",
+  });
 
 });
 

@@ -9,17 +9,15 @@ const cors = require("cors");
 const aiRoutes = require("./routes/ai.routes");
 const errorMiddleware = require("./middlewares/errors");
 
-// Parse environment frontend URLs + allow localhost & vercel deployments
+// Parse explicit frontend URLs. Never allow arbitrary deployment subdomains.
 const envOrigins = (process.env.FRONTEND_URL || "")
   .split(",")
   .map((origin) => origin.trim().replace(/\/$/, "")) 
   .filter(Boolean);
 
-const defaultOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "https://smart-craving-six.vercel.app"
-];
+const defaultOrigins = process.env.NODE_ENV === "PRODUCTION"
+  ? []
+  : ["http://localhost:5173", "http://localhost:3000"];
 
 const allowedOrigins = Array.from(new Set([...envOrigins, ...defaultOrigins]));
 console.log("Allowed Origins for CORS:", allowedOrigins);
@@ -29,9 +27,7 @@ const corsOptions = {
     // 1. Allow non-browser requests (Postman, health checks, server-to-server)
     if (!origin) return callback(null, true);
 
-    // 2. Allow if in explicit list or matching any *.vercel.app branch deployment
-    const isAllowed =
-      allowedOrigins.includes(origin) || /\.vercel\.app$/.test(origin);
+    const isAllowed = allowedOrigins.includes(origin);
 
     if (isAllowed) {
       return callback(null, true);

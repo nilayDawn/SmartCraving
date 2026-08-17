@@ -2,29 +2,22 @@ const nodemailer = require("nodemailer");
 const pug = require("pug");
 const htmlToText = require("html-to-text");
 
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST || "smtp.gmail.com",
+  port: Number(process.env.EMAIL_PORT || 587),
+  secure: Number(process.env.EMAIL_PORT || 587) === 465,
+  auth: {
+    user: process.env.EMAIL_USERNAME,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
+
 module.exports = class Email {
   constructor(user, url) {
-    // console.log(user);
-    console.log(process.env.EMAIL_HOST);
     this.to = user.email;
     this.firstName = user.name.split(" ")[0];
     this.url = url;
-    this.from = `SmartCraving <${process.env.EMAIL_FROM}>`;
-  }
-
-  newTransport() {
-    // if (process.env.NODE_ENV === "production") {
-    //   return 1;
-    // }
-
-    return nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: process.env.EMAIL_PORT,
-      auth: {
-        user: process.env.EMAIL_USERNAME,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-    });
+    this.from = process.env.EMAIL_FROM;
   }
 
   async send(template, subject) {
@@ -34,16 +27,13 @@ module.exports = class Email {
       subject,
     });
 
-    // 2) Define email options
-    const mailOptions = {
+    await transporter.sendMail({
       from: this.from,
       to: this.to,
       subject,
       html,
       text: htmlToText.convert(html),
-    };
-
-    await this.newTransport().sendMail(mailOptions);
+    });
   }
 
   async sendWelcome() {

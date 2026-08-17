@@ -66,6 +66,9 @@ const userSchema = new mongoose.Schema(
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
+  // Invalidate tokens issued before a password change, including reset.
+  if (!this.isNew) this.passwordChangedAt = Date.now() - 1000;
+
   this.password = await bcrypt.hash(this.password, 12);
   this.passwordConfirm = undefined;
 

@@ -17,6 +17,27 @@
 const dotenv = require("dotenv");
 dotenv.config({ path: "./config/config.env" });
 
+if (process.env.NODE_ENV === "PRODUCTION") {
+  const requiredProductionEnv = [
+    "FRONTEND_URL",
+    "EMAIL_HOST",
+    "EMAIL_PORT",
+    "EMAIL_USERNAME",
+    "EMAIL_PASSWORD",
+    "EMAIL_FROM",
+  ];
+  const missingProductionEnv = requiredProductionEnv.filter(
+    (name) => !process.env[name] || !process.env[name].trim()
+  );
+
+  if (missingProductionEnv.length) {
+    throw new Error(
+      `Missing production environment variables: ${missingProductionEnv.join(", ")}`
+    );
+  }
+
+}
+
 const app = require("./app");
 const connectDatabase = require("./config/database");
 const cloudinary = require("cloudinary");
