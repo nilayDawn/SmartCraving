@@ -1,0 +1,100 @@
+# Local Setup Guide
+
+## 1. Prerequisites
+
+- Node.js 18 or newer is recommended.
+- npm.
+- MongoDB reachable from the backend.
+- Stripe test-mode keys for checkout.
+- Optional: Cloudinary, SMTP/Mailtrap, and Groq credentials.
+
+## 2. Install dependencies
+
+```bash
+cd backend
+npm install
+cd ../frontend
+npm install
+```
+
+## 3. Configure the backend
+
+Create `backend/config/config.env` locally. Do not commit it.
+
+```env
+PORT=4000
+NODE_ENV=DEVELOPMENT
+DB_LOCAL_URI=mongodb://127.0.0.1:27017/orderit
+JWT_SECRET=replace-with-a-long-random-secret
+JWT_EXPIRE=90d
+FRONTEND_URL=http://localhost:5173
+
+# Optional integrations
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+EMAIL_USERNAME=
+EMAIL_PASSWORD=
+EMAIL_HOST=
+EMAIL_PORT=25
+EMAIL_FROM=orderit@example.com
+STRIPE_SECRET_KEY=sk_test_replace_me
+STRIPE_API_KEY=pk_test_replace_me
+GROQ_API_KEY=
+```
+
+`FRONTEND_URL` supports comma-separated origins for CORS. The backend loads this file from `backend/server.js` and payment/order code reads it directly too.
+
+## 4. Configure the frontend
+
+Create `frontend/.env.local` only if the API is not at the default host:
+
+```env
+VITE_API_URL=http://localhost:4000
+```
+
+The Axios client appends `/api`, resulting in `http://localhost:4000/api/v1/users/login`.
+
+## 5. Run the applications
+
+Terminal 1:
+
+```bash
+cd backend
+npm run dev
+```
+
+Terminal 2:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Open `http://localhost:5173`.
+
+## 6. Seed data
+
+The current seeder imports `backend/data/foodItem.json`, but the repository sample JSON files are at the project root. Verify the import path and dataset before using it. The seeder deletes all existing food items before inserting data; use only with a disposable development database.
+
+## 7. Verification
+
+```bash
+cd frontend
+npm run build
+npm run lint
+cd ../backend
+node --check app.js
+node --check server.js
+```
+
+## 8. Troubleshooting
+
+| Symptom | Checks |
+| --- | --- |
+| CORS error | Confirm the exact frontend origin is in `FRONTEND_URL`. |
+| Database failure | Check `DB_LOCAL_URI`, network access, and credentials. |
+| Login does not persist | Confirm Axios `withCredentials`, backend CORS credentials, and cookie settings. |
+| Stripe checkout fails | Confirm test keys and valid item image URLs. |
+| Password reset fails | Verify SMTP values and the reset URL’s frontend origin. |
+| AI generation fails | Confirm `GROQ_API_KEY`; review analysis has a local fallback, food generation does not. |
