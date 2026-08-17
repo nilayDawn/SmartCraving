@@ -24,7 +24,7 @@ Create `backend/config/config.env` locally. Do not commit it.
 ```env
 PORT=4000
 NODE_ENV=DEVELOPMENT
-DB_LOCAL_URI=mongodb://127.0.0.1:27017/orderit
+DB_LOCAL_URI=mongodb://127.0.0.1:27017/smartcraving
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRE=90d
 FRONTEND_URL=http://localhost:5173
@@ -37,7 +37,7 @@ EMAIL_USERNAME=
 EMAIL_PASSWORD=
 EMAIL_HOST=
 EMAIL_PORT=25
-EMAIL_FROM=orderit@example.com
+EMAIL_FROM=smartcraving@example.com
 STRIPE_SECRET_KEY=sk_test_replace_me
 STRIPE_API_KEY=pk_test_replace_me
 GROQ_API_KEY=

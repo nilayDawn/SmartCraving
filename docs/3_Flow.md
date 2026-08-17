@@ -1,4 +1,4 @@
-# OrderIt User and System Flows
+# SmartCraving User and System Flows
 
 ## 1. Customer ordering flow
 

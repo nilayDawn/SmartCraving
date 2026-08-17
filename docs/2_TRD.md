@@ -1,4 +1,4 @@
-# OrderIt Technical Requirements Document
+# SmartCraving Technical Requirements Document
 
 ## 1. Architecture
 

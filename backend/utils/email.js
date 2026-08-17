@@ -9,7 +9,7 @@ module.exports = class Email {
     this.to = user.email;
     this.firstName = user.name.split(" ")[0];
     this.url = url;
-    this.from = `OrderIt <${process.env.EMAIL_FROM}>`;
+    this.from = `SmartCraving <${process.env.EMAIL_FROM}>`;
   }
 
   newTransport() {
@@ -47,7 +47,7 @@ module.exports = class Email {
   }
 
   async sendWelcome() {
-    await this.send("welcome", "welcome to the Order It!");
+    await this.send("welcome", "Welcome to SmartCraving!");
   }
 
   async sendPasswordReset() {

@@ -45,12 +45,12 @@ const Header = () => {
         {/* Logo */}
         <div className="shrink-0">
           <Link to="/" className="group flex items-center gap-2">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-600/30 transition-transform duration-300 group-hover:scale-105">
-              <span className="text-xl">🥗</span>
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg shadow-emerald-600/20 transition-transform duration-300 group-hover:scale-105">
+              <img src="/images/logo.png" alt="SmartCraving logo" className="h-full w-full object-contain p-1" />
             </div>
             <div className="flex flex-col">
               <span className="font-display text-2xl font-black tracking-tight text-slate-900">
-                Order<span className="text-emerald-600">It</span>
+                Smart<span className="text-emerald-600">Craving</span>
               </span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Gourmet Delivery</span>
             </div>

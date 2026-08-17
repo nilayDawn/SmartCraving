@@ -1,8 +1,8 @@
-# OrderIt Product Requirements Document
+# SmartCraving Product Requirements Document
 
 ## 1. Product summary
 
-OrderIt is a web application for discovering restaurants, browsing their menus, adding food to a single-restaurant cart, paying online, and reviewing previous orders. The current product is configured around the Zyka restaurant use case, but the data model supports multiple restaurants.
+SmartCraving is an AI-powered web application for discovering restaurants, browsing their menus, adding food to a single-restaurant cart, paying online, and reviewing previous orders. The current product is configured around the Zyka restaurant use case, but the data model supports multiple restaurants.
 
 The product has two primary audiences: customers who want a fast food-ordering experience, and administrators/restaurant operators who maintain restaurants, menus, food items, coupons, and review insights.
 

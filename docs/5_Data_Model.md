@@ -1,4 +1,4 @@
-# OrderIt Data Model
+# SmartCraving Data Model
 
 MongoDB is accessed through Mongoose. Object IDs are stored as `ObjectId` values.
 
