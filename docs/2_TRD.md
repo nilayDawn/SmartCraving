@@ -120,3 +120,5 @@ cd backend && node --check app.js && node --check server.js
 ```
 
 For route/controller changes, run `node --check` on every changed JavaScript file and manually verify the affected flow with MongoDB running.
+
+The repository CI workflow applies these checks automatically on pushes to `main` and pull requests targeting `main`. See [8_CI_CD.md](./8_CI_CD.md) for the workflow design and branch-protection recommendations.

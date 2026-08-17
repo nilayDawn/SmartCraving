@@ -187,7 +187,7 @@ const Header = () => {
             !loading && (
               <Link
                 to="/users/login"
-                className="rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 font-display text-sm font-bold text-white shadow-md shadow-emerald-600/20 transition duration-200 hover:-translate-y-0.5 hover:from-emerald-700 hover:to-teal-700 hover:shadow-lg hover:shadow-emerald-600/30 active:scale-[0.98]"
+                className="rounded-2xl bg-linear-to-r from-emerald-600 to-teal-600 px-5 py-2.5 font-display text-sm font-bold text-white shadow-md shadow-emerald-600/20 transition duration-200 hover:-translate-y-0.5 hover:from-emerald-700 hover:to-teal-700 hover:shadow-lg hover:shadow-emerald-600/30 active:scale-[0.98]"
               >
                 Sign In
               </Link>
