@@ -60,6 +60,10 @@ app.use("/api/v1/eats/cart", cart);
 
 app.use("/api/v1/ai", aiRoutes);
 
+app.use("/health", (req, res) => {
+  res.status(200).json({ status: "success", message: "Server is healthy" });
+});
+
 //----------------------------------------------------
 
 app.set("view engine", "pug");
