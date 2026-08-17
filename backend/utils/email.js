@@ -6,6 +6,9 @@ const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || "smtp.gmail.com",
   port: Number(process.env.EMAIL_PORT || 587),
   secure: Number(process.env.EMAIL_PORT || 587) === 465,
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
   auth: {
     user: process.env.EMAIL_USERNAME,
     pass: process.env.EMAIL_PASSWORD,
@@ -17,7 +20,7 @@ module.exports = class Email {
     this.to = user.email;
     this.firstName = user.name.split(" ")[0];
     this.url = url;
-    this.from = process.env.EMAIL_FROM;
+    this.from = process.env.EMAIL_FROM || process.env.EMAIL_USERNAME;
   }
 
   async send(template, subject) {

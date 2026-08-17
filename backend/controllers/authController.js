@@ -258,6 +258,13 @@ exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
 
   } catch (err) {
 
+    console.error("Password reset email failed:", {
+      code: err.code,
+      command: err.command,
+      responseCode: err.responseCode,
+      message: err.message,
+    });
+
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
 
