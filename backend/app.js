@@ -1,5 +1,8 @@
 const express = require("express");
 const app = express();
+
+// Trust reverse proxy (e.g. Render, Heroku, Nginx) for express-rate-limit IP detection
+app.set("trust proxy", 1);
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
