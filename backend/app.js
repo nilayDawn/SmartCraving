@@ -13,6 +13,7 @@ const errorMiddleware = require("./middlewares/errors");
 
 const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
   .split(",").map((origin) => origin.trim()).filter(Boolean);
+console.log("Allowed Origins for CORS:", allowedOrigins);
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
