@@ -45,32 +45,39 @@ async function addItemToCart(req, res) {
 
       if (menu?.restaurant) {
         actualRestaurantId = getCleanId(menu.restaurant);
-        // Auto-heal missing restaurant reference on the FoodItem record
-        foodItem.restaurant = menu.restaurant;
-        await foodItem.save();
       }
     }
 
-    // 2. Fall back to requestedRestaurantId if foodItem had no restaurant association anywhere
-    const targetRestaurantId = actualRestaurantId || requestedRestaurantId;
+    // 2. Validate target restaurant existence in DB (prefer actual, fallback to requested)
+    let targetRestaurant = null;
+    let targetRestaurantId = null;
 
-    if (!targetRestaurantId) {
-      return res.status(400).json({ message: "Food item does not belong to this restaurant" });
+    if (actualRestaurantId) {
+      targetRestaurant = await Restaurant.findById(actualRestaurantId);
+      if (targetRestaurant) {
+        targetRestaurantId = actualRestaurantId;
+      }
     }
 
-    // If foodItem had no restaurant set in DB, auto-persist targetRestaurantId
-    if (!foodItem.restaurant) {
+    if (!targetRestaurant && requestedRestaurantId) {
+      targetRestaurant = await Restaurant.findById(requestedRestaurantId);
+      if (targetRestaurant) {
+        targetRestaurantId = requestedRestaurantId;
+      }
+    }
+
+    if (!targetRestaurant) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    // Auto-heal missing/stale restaurant reference on the FoodItem record in DB
+    if (getCleanId(foodItem.restaurant) !== targetRestaurantId) {
       foodItem.restaurant = targetRestaurantId;
       await foodItem.save();
     }
 
     if (!Number.isInteger(Number(quantity)) || Number(quantity) < 1) {
       return res.status(400).json({ message: "Quantity must be at least 1" });
-    }
-
-    const restaurant = await Restaurant.findById(targetRestaurantId);
-    if (!restaurant) {
-      return res.status(404).json({ message: "Restaurant not found" });
     }
 
     let cart = await Cart.findOne({ user: userId });
