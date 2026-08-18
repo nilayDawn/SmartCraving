@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { register} from "../../redux/actions/userActions";
 import { clearErrors } from "../../redux/slices/userSlice";
 import { toast } from "react-toastify";
+import PasswordInput from "./PasswordInput";
 
 const Register = () => {
  
@@ -117,29 +118,27 @@ const Register = () => {
               <label htmlFor="password_field">
                 Password <span className="text-rose-500 font-bold">*</span>
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 id="password_field"
-                className="form-control"
                 name="password"
                 value={password}
                 onChange={onChange}
+                autoComplete="new-password"
                 required
-              ></input>
+              />
             </div>
             <div className="form-group">
               <label htmlFor="passwordConfirm_field">
                 Password Confirm <span className="text-rose-500 font-bold">*</span>
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 id="passwordConfirm_field"
-                className="form-control"
                 name="passwordConfirm"
                 value={passwordConfirm}
                 onChange={onChange}
+                autoComplete="new-password"
                 required
-              ></input>
+              />
             </div>
             <div className="form-group">
               <label htmlFor="phoneNumber_field">

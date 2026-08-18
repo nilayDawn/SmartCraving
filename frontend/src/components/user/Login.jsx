@@ -7,6 +7,7 @@ import { login } from "../../redux/actions/userActions";
 import { clearErrors } from "../../redux/slices/userSlice";
 
 import { toast } from "react-toastify";
+import PasswordInput from "./PasswordInput";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -65,12 +66,12 @@ const Login = () => {
 
               <div className="form-group">
                 <label htmlFor="password_field">Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="password_field"
-                  className="form-control"
+                  name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                   required
                 />
               </div>

@@ -6,7 +6,7 @@
 - npm.
 - MongoDB reachable from the backend.
 - Stripe test-mode keys for checkout.
-- Optional: Cloudinary, SMTP/Mailtrap, and Groq credentials.
+- Optional: Cloudinary and Groq credentials.
 
 ## 2. Install dependencies
 
@@ -34,13 +34,13 @@ FRONTEND_URL=http://localhost:5173
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
+# Gmail SMTP is used for password-reset emails. Use a Google App Password,
+# not your normal Gmail password.
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USERNAME=your-gmail-address@gmail.com
 EMAIL_PASSWORD=your-16-character-google-app-password
-EMAIL_FROM=your-gmail-address@gmail.com
-# Optional alternative to SMTP. If set, password-reset emails use Resend.
-RESEND_API_KEY=
+EMAIL_FROM="SmartCraving <your-gmail-address@gmail.com>"
 # Optional explicit frontend origin used in reset links.
 RESET_URL_ORIGIN=http://localhost:5173
 STRIPE_SECRET_KEY=sk_test_replace_me
@@ -106,5 +106,5 @@ node --check server.js
 | Database failure | Check `DB_LOCAL_URI`, network access, and credentials. |
 | Login does not persist | Confirm Axios `withCredentials`, backend CORS credentials, and cookie settings. |
 | Stripe checkout fails | Confirm test keys and valid item image URLs. |
-| Password reset fails | Verify `RESEND_API_KEY` or all `EMAIL_*` values, plus `RESET_URL_ORIGIN` / `FRONTEND_URL`. |
+| Password reset fails | Verify Gmail SMTP settings, your App Password, `EMAIL_FROM`, and `RESET_URL_ORIGIN` / `FRONTEND_URL`. |
 | AI generation fails | Confirm `GROQ_API_KEY`; review analysis has a local fallback, food generation does not. |

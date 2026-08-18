@@ -260,6 +260,8 @@ exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
   } catch (err) {
 
     console.error("Password reset email failed:", {
+      providerStatus: err.response?.status,
+      providerData: err.response?.data,
       code: err.code,
       command: err.command,
       responseCode: err.responseCode,

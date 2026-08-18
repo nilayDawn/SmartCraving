@@ -23,22 +23,17 @@ if (process.env.NODE_ENV?.toUpperCase() === "PRODUCTION") {
     (name) => !process.env[name] || !process.env[name].trim()
   );
 
-  const smtpVariables = [
+  const requiredEmailVariables = [
     "EMAIL_HOST",
     "EMAIL_PORT",
     "EMAIL_USERNAME",
     "EMAIL_PASSWORD",
     "EMAIL_FROM",
   ];
-  const hasSmtpConfig = smtpVariables.every(
-    (name) => process.env[name] && process.env[name].trim()
-  );
-  const hasResendConfig = Boolean(process.env.RESEND_API_KEY?.trim());
-
-  if (!hasSmtpConfig && !hasResendConfig) {
-    missingProductionEnv.push(
-      "RESEND_API_KEY (or complete EMAIL_HOST/EMAIL_PORT/EMAIL_USERNAME/EMAIL_PASSWORD/EMAIL_FROM)"
-    );
+  for (const name of requiredEmailVariables) {
+    if (!process.env[name]?.trim()) {
+      missingProductionEnv.push(name);
+    }
   }
 
   if (missingProductionEnv.length) {

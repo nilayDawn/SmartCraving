@@ -27,7 +27,7 @@ JWT_EXPIRE=90d
 FRONTEND_URL=http://localhost:5173
 ```
 
-Optional integrations use Cloudinary, SMTP, Stripe, and `GROQ_API_KEY`. Never commit real credentials, tokens, database URLs, or payment keys. Use deployment secret storage and rotate any credentials that have been exposed.
+Optional integrations use Cloudinary, Stripe, and `GROQ_API_KEY`. Password-reset email uses Gmail SMTP with `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USERNAME`, `EMAIL_PASSWORD`, and `EMAIL_FROM`. Use a Gmail App Password, never your normal password. Never commit real credentials, tokens, database URLs, or payment keys. Use deployment secret storage and rotate any credentials that have been exposed.
 
 ## Application structure
 

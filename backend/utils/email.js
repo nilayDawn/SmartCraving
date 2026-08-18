@@ -1,5 +1,4 @@
 const nodemailer = require("nodemailer");
-const axios = require("axios");
 const pug = require("pug");
 const htmlToText = require("html-to-text");
 
@@ -21,9 +20,7 @@ module.exports = class Email {
     this.to = user.email;
     this.firstName = user.name.split(" ")[0];
     this.url = url;
-    this.from =
-      process.env.EMAIL_FROM ||
-      (process.env.RESEND_API_KEY ? "onboarding@resend.dev" : process.env.EMAIL_USERNAME);
+    this.from = process.env.EMAIL_FROM || process.env.EMAIL_USERNAME;
   }
 
   async send(template, subject) {
@@ -32,29 +29,6 @@ module.exports = class Email {
       url: this.url,
       subject,
     });
-
-    const resendApiKey = process.env.RESEND_API_KEY?.trim();
-
-    if (resendApiKey) {
-      await axios.post(
-        "https://api.resend.com/emails",
-        {
-          from: this.from,
-          to: [this.to],
-          subject,
-          html,
-          text: htmlToText.convert(html),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
-          timeout: 15000,
-        }
-      );
-      return;
-    }
 
     await transporter.sendMail({
       from: this.from,
@@ -76,11 +50,3 @@ module.exports = class Email {
     );
   }
 };
-
-// mail traps for development
-//  this service, you can fake to send emails to clients, but these emails will then never reach these clients, and instead be trapped in your Mailtrap,
-// And so that way you cannot accidentally send some development emails to all of your clients or users,
-
-// webside used for dealing emails
-// SendGrid provides an SMTP service that allows you to deliver your email via its servers instead of  own client or server
-// Make up any email address @mailsac.com and you can instantly receive mail. No need to create the email first! Everything is public, unless you create an account.
