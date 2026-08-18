@@ -103,10 +103,6 @@ exports.getRestaurantReviewSummary = catchAsync(async (req, res, next) => {
     });
   }
 
-  if (req.user.role !== "admin") {
-    return next(new ErrorHandler("An administrator must generate the first review summary", 403));
-  }
-
   const aiData = await analyzeReviewsWithAI(
     restaurant.reviews,
     `restaurant:${id}`,
@@ -137,10 +133,6 @@ exports.getFoodReviewSummary = catchAsync(async (req, res) => {
         topMentions: food.reviewTopMentions || [],
       },
     });
-  }
-
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "An administrator must generate the first review summary" });
   }
 
   const aiData = await analyzeReviewsWithAI(
@@ -194,6 +186,11 @@ exports.addReview = catchAsync(async (req, res) => {
   restaurant.ratings =
     totalRatings / restaurant.reviews.length;
 
+  // Invalidate the persisted summary when the review set changes.
+  restaurant.reviewSentiment = undefined;
+  restaurant.reviewSummaryBullets = [];
+  restaurant.reviewTopMentions = [];
+
   await restaurant.save();
 
   res.status(200).json({
@@ -201,4 +198,44 @@ exports.addReview = catchAsync(async (req, res) => {
     message: "Review Added Successfully",
     restaurant,
   });
+});
+
+exports.deleteRestaurantReview = catchAsync(async (req, res, next) => {
+  const restaurant = await Restaurant.findById(req.params.id);
+  if (!restaurant) return next(new ErrorHandler("Restaurant not found", 404));
+
+  const review = restaurant.reviews.id(req.params.reviewId);
+  if (!review) return next(new ErrorHandler("Review not found", 404));
+
+  restaurant.reviews.pull(req.params.reviewId);
+  restaurant.numOfReviews = restaurant.reviews.length;
+  restaurant.ratings = restaurant.numOfReviews
+    ? restaurant.reviews.reduce((sum, item) => sum + item.rating, 0) / restaurant.numOfReviews
+    : 0;
+  restaurant.reviewSentiment = undefined;
+  restaurant.reviewSummaryBullets = [];
+  restaurant.reviewTopMentions = [];
+  await restaurant.save();
+
+  res.status(200).json({ success: true, restaurant });
+});
+
+exports.deleteFoodReview = catchAsync(async (req, res, next) => {
+  const food = await FoodItem.findById(req.params.id);
+  if (!food) return next(new ErrorHandler("Food item not found", 404));
+
+  const review = food.reviews.id(req.params.reviewId);
+  if (!review) return next(new ErrorHandler("Review not found", 404));
+
+  food.reviews.pull(req.params.reviewId);
+  food.numOfReviews = food.reviews.length;
+  food.ratings = food.numOfReviews
+    ? food.reviews.reduce((sum, item) => sum + item.rating, 0) / food.numOfReviews
+    : 0;
+  food.reviewSentiment = undefined;
+  food.reviewSummaryBullets = [];
+  food.reviewTopMentions = [];
+  await food.save();
+
+  res.status(200).json({ success: true, foodItem: food });
 });

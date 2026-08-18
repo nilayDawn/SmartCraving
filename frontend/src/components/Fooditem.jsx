@@ -183,7 +183,7 @@ const Fooditem = ({ fooditem, restaurant }) => {
                     dispatch(getMenus(restaurant));
                   }
                 } catch (err) {
-                  console.error(err);
+                  // console.error(err);
                   alert(err.response?.data?.message || "Unable to delete item");
                 }
               }}

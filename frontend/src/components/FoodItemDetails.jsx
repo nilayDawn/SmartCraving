@@ -21,6 +21,7 @@ const FoodItemDetails = () => {
   const [reviewForm, setReviewForm] = useState({ name: user?.name || "", rating: 5, Comment: "" });
   const [reviewError, setReviewError] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [deletingReviewId, setDeletingReviewId] = useState(null);
   const [cartError, setCartError] = useState("");
   const [showFoodAI, setShowFoodAI] = useState(false);
   const [foodAISummary, setFoodAISummary] = useState({ sentiment: "", summaryBullets: [], topMentions: [] });
@@ -119,6 +120,20 @@ const FoodItemDetails = () => {
       setReviewError(requestError.response?.data?.message || "Unable to submit review.");
     } finally {
       setReviewSubmitting(false);
+    }
+  };
+
+  const deleteReview = async (reviewId) => {
+    if (!window.confirm("Delete this food item review?")) return;
+    try {
+      setDeletingReviewId(reviewId);
+      const { data } = await api.delete(`/v1/ai/items/${food._id}/reviews/${reviewId}`);
+      setFood(data.foodItem);
+      setFoodAISummary({ sentiment: "", summaryBullets: [], topMentions: [] });
+    } catch (requestError) {
+      setReviewError(requestError.response?.data?.message || "Unable to delete review.");
+    } finally {
+      setDeletingReviewId(null);
     }
   };
 
@@ -331,10 +346,22 @@ const FoodItemDetails = () => {
             {food.reviews?.length ? (
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 {food.reviews.map((review, index) => (
-                  <div key={`${review.name}-${index}`} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 space-y-2">
+                  <div key={review._id || `${review.name}-${index}`} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-sm text-slate-900">{review.name}</span>
-                      <span className="text-xs text-amber-500 font-bold">{"★".repeat(review.rating)}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-amber-500 font-bold">{"★".repeat(review.rating)}</span>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            disabled={deletingReviewId === review._id}
+                            onClick={() => deleteReview(review._id)}
+                            className="text-[10px] font-bold text-rose-600 hover:text-rose-800 disabled:opacity-50"
+                          >
+                            {deletingReviewId === review._id ? "Deleting..." : "Delete"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-xs leading-relaxed text-slate-600">{review.Comment}</p>
                   </div>

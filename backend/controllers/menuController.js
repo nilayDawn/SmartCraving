@@ -35,6 +35,7 @@
 
 
 const Menu = require("../models/menu");
+const FoodItem = require("../models/foodItem");
 //Now we are importing ErrorHandler”
 //ErrorHandler → custom error class
 //used to create meaningful errors
@@ -151,6 +152,15 @@ exports.addItemToMenu = catchAsync(async (req, res, next) => {
     return next(new ErrorHandler("Menu not found", 404));
   }
 
+  if (!menu.restaurant) {
+    return next(new ErrorHandler("Menu is not linked to a restaurant", 400));
+  }
+
+  const foodItem = await FoodItem.findById(foodItemId);
+  if (!foodItem) {
+    return next(new ErrorHandler("Food item not found", 404));
+  }
+
   // find category
   let cat = menu.menu.find((c) => c.category === category);
 
@@ -164,6 +174,14 @@ exports.addItemToMenu = catchAsync(async (req, res, next) => {
   cat.items.push(foodItemId);
 
   await menu.save();
+
+  // Keep the direct FoodItem relation in sync with the menu relation. Search
+  // results and food-item detail pages do not have the restaurant route param
+  // available, so they depend on this field to resolve the restaurant.
+  if (!foodItem.restaurant || foodItem.restaurant.toString() !== menu.restaurant.toString()) {
+    foodItem.restaurant = menu.restaurant;
+    await foodItem.save();
+  }
 
   await menu.populate("menu.items");
 

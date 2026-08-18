@@ -35,6 +35,8 @@
 ### 🤖 AI-Powered Restaurant Insights & Sentiment Caching
 - **Automated Review Sentiment Analysis**: Generates guest sentiment (`positive`, `negative`, `mixed`), key summary bullets, and top mention tags.
 - **In-Memory Review Sentiment Caching**: Implemented a content-hash fingerprint cache (`reviewSentimentCache`) with a 1-hour TTL. Re-uses sentiment analysis results for unchanged reviews to eliminate redundant API calls and optimize latency.
+- **Authenticated Summary Access**: Any signed-in user can request restaurant or food-item review summaries; persisted summaries are returned without regenerating AI output.
+- **Review Cache Invalidation**: Adding or deleting a review clears the saved summary so the next request reflects the current review set.
 
 ### 🛒 Complete E-Commerce Experience
 - **Interactive Restaurant Catalog**: Filtering by category, vegetarian preferences, and search keywords.
@@ -163,8 +165,16 @@ Open `http://localhost:5173` in your browser.
 - `POST /api/v1/eats/item` - Add a food item (supports direct photo upload & image link)
 - `PATCH /api/v1/eats/item/:foodId` - Update a food item
 - `DELETE /api/v1/eats/item/:foodId` - Delete a food item
+- `DELETE /api/v1/ai/stores/:id/reviews/:reviewId` - Delete a restaurant review
+- `DELETE /api/v1/ai/items/:id/reviews/:reviewId` - Delete a food-item review
 
-### Public & Customer Endpoints
+### Authenticated Customer Endpoints
+- `POST /api/v1/ai/stores/:id/summary` - Get or generate a cached restaurant review summary
+- `POST /api/v1/ai/items/:id/summary` - Get or generate a cached food-item review summary
+- `PUT /api/v1/ai/stores/:id/review` - Add a restaurant review
+- `PUT /api/v1/eats/item/:foodId/review` - Add a food-item review
+
+### Public Endpoints
 - `GET /api/v1/eats/stores` - List all restaurants
 - `GET /api/v1/eats/stores/:storeId/menus` - Get menu & dishes for a restaurant
 - `GET /api/v1/eats/food/:id` - Get food item details

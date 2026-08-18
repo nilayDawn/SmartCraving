@@ -73,7 +73,7 @@ const Menu = () => {
       const { data } = await api.get(`/v1/eats/items/${id}`);
       setAvailableItems(data.data);
     } catch (err) {
-      console.error("failed to load items", err);
+      // console.error("failed to load items", err);
     }
   };
 
@@ -131,7 +131,7 @@ const Menu = () => {
 
       return created;
     } catch (err) {
-      console.error("unable to create food item", err);
+      // console.error("unable to create food item", err);
       alert(err.response?.data?.message || err.message);
       return null;
     } finally {

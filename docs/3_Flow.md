@@ -47,18 +47,19 @@ Normal catalogue order: create restaurant, create linked menu, create linked foo
 
 1. An authenticated customer submits `name`, `rating`, and `Comment`.
 2. Backend appends the review and recalculates count/average.
-3. The user clicks the restaurant or food-item AI summary button.
+3. An authenticated user clicks the restaurant or food-item AI summary button.
 4. The frontend requests the corresponding summary endpoint.
-5. Backend computes a content-hash fingerprint and uses an entity-scoped cache key (`restaurant:<id>:<hash>` or `food:<id>:<hash>`).
+5. Backend returns the persisted summary when reviews have not changed; otherwise it computes a content-hash fingerprint and uses an entity-scoped cache key (`restaurant:<id>:<hash>` or `food:<id>:<hash>`).
 6. On **Cache Hit** (valid 1-hour TTL), cached sentiment (`sentiment`, `summaryBullets`, `topMentions`) is returned immediately.
 7. On **Cache Miss**, backend sends the current comments to the AI service, caches the result, and persists the latest summary fields.
-8. If external AI fails, the system uses a local heuristic analyzer fallback.
+8. Adding or deleting a review clears the persisted summary so the next request reflects the new review set.
+9. If external AI fails, the system uses a local heuristic analyzer fallback.
 
 ### Food metadata
 
 The generate-only endpoint returns AI data for preview. The `/:foodId` endpoint saves `aiDescription`, `aiTags`, `aiAllergens`, `aiServes`, and `aiBestFor`.
 
-Review summaries are authenticated and rate-limited. Existing summaries are returned from cache/document data; administrators generate missing summaries. Restaurant requests use `POST /api/v1/ai/stores/:id/summary`; food-item requests use `POST /api/v1/ai/items/:id/summary`.
+Review summaries are authenticated and rate-limited. Existing summaries are returned from cache/document data, and any authenticated user may generate a missing summary. Administrators may delete reviews. Restaurant requests use `POST /api/v1/ai/stores/:id/summary`; food-item requests use `POST /api/v1/ai/items/:id/summary`.
 
 ## 5. Password reset flow
 

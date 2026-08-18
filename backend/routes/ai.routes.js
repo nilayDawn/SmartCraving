@@ -46,6 +46,18 @@ router.put(
 );
 router.post("/stores/:id/summary", protect, aiController.getRestaurantReviewSummary);
 router.post("/items/:id/summary", protect, aiController.getFoodReviewSummary);
+router.delete(
+  "/stores/:id/reviews/:reviewId",
+  protect,
+  authorizeRoles("admin"),
+  aiController.deleteRestaurantReview,
+);
+router.delete(
+  "/items/:id/reviews/:reviewId",
+  protect,
+  authorizeRoles("admin"),
+  aiController.deleteFoodReview,
+);
 
 // Store Reviews (Protected)
 router.put("/stores/:id/review", protect, aiController.addReview);

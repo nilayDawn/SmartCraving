@@ -22,11 +22,11 @@ Guests can browse restaurants, menus, food details, ratings, reviews, and curren
 
 ### Customer
 
-Customers can register, sign in, manage their profile, browse menus, view food details from the cart, maintain a single-restaurant cart, apply coupons, pay through Stripe Checkout, view their own orders, receive restaurant status messages, submit reviews, and view cached AI summaries.
+Customers can register, sign in, manage their profile, browse menus, view food details from the cart, maintain a single-restaurant cart, apply coupons, pay through Stripe Checkout, view their own orders, receive restaurant status messages, submit reviews, and generate or view cached AI summaries for restaurants and food items.
 
 ### Administrator
 
-Administrators can create, update, and delete restaurants, menus, food items, and coupons; manage order statuses and messages; generate AI food metadata; and analyze restaurant reviews.
+Administrators can create, update, and delete restaurants, menus, food items, and coupons; delete restaurant and food-item reviews; manage order statuses and messages; generate AI food metadata; and analyze restaurant reviews.
 
 Public registration cannot create an administrator account.
 
@@ -111,6 +111,8 @@ Cancellation is allowed before a terminal state. Delivered and Cancelled cannot 
 - [ ] Payment completion cannot create duplicate orders.
 - [ ] Customer cannot access another customer’s order.
 - [ ] Admin can manage catalogue, coupons, orders, and AI features.
+- [ ] Authenticated customers can generate AI review summaries, and repeated requests reuse cached summaries.
+- [ ] Admin can delete restaurants, food items, and individual restaurant or food-item reviews.
 - [ ] Terminal statuses cannot be changed.
 - [ ] Application remains responsive on mobile and desktop.
 - [ ] Security and build checks pass before release.

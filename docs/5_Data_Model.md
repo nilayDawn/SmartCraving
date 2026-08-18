@@ -25,7 +25,7 @@ Roles: `user`, `restaurant-owner`, and `admin`.
 
 `name`, `isVeg`, `address`, average `ratings`, `numOfReviews`, GeoJSON `location`, `reviews`, AI review fields, image array, and `createdAt`.
 
-Indexes: `location` uses `2dsphere`; `address` uses a text index. Review fields are `name`, numeric `rating`, and `Comment`.
+Indexes: `location` uses `2dsphere`; `address` uses a text index. Review fields are `name`, numeric `rating`, and `Comment`; review subdocuments have generated IDs for administrative deletion.
 
 ### Menu
 
@@ -40,7 +40,7 @@ Menu item references are populated when menus are read.
 
 ### FoodItem
 
-Core fields are `name`, `price`, `description`, `ratings`, `images`, `menu`, `stock`, `restaurant`, `numOfReviews`, and `reviews`. AI fields are `aiDescription`, `aiTags`, `aiAllergens`, `aiServes`, and `aiBestFor`.
+Core fields are `name`, `price`, `description`, `ratings`, `images`, `menu`, `stock`, `restaurant`, `numOfReviews`, and `reviews`. AI fields are `aiDescription`, `aiTags`, `aiAllergens`, `aiServes`, and `aiBestFor`; persisted review-summary fields are `reviewSentiment`, `reviewSummaryBullets`, and `reviewTopMentions`. Review summaries are cleared when reviews change.
 
 ### Cart
 

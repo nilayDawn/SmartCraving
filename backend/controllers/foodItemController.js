@@ -123,6 +123,9 @@ exports.addFoodReview = catchAsync(async (req, res, next) => {
   foodItem.reviews.push({ name, rating: safeRating, Comment });
   foodItem.numOfReviews = foodItem.reviews.length;
   foodItem.ratings = foodItem.reviews.reduce((total, review) => total + review.rating, 0) / foodItem.numOfReviews;
+  foodItem.reviewSentiment = undefined;
+  foodItem.reviewSummaryBullets = [];
+  foodItem.reviewTopMentions = [];
   await foodItem.save();
 
   res.status(201).json({ success: true, data: foodItem });

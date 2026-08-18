@@ -21,9 +21,9 @@ Current authorization rules:
 
 - Cart add/update/delete derive the user from the authenticated request rather than trusting a body-supplied user ID.
 - Coupon create/update/delete require `admin`; listing is public and validation requires an authenticated user.
-- AI generation and review-analysis routes require `admin`; cached summary reads require authentication.
+- Food metadata generation and administrative review analysis require `admin`; review-summary requests require authentication and may generate a missing summary for any authenticated user. Summary endpoints are rate-limited and reuse cached results.
 - Order details require the order owner or an administrator.
-- Restaurant and food reviews require authentication and are rate-limited.
+- Restaurant and food reviews require authentication and are rate-limited. Review deletion requires `admin`.
 
 Purchase access is restricted to `user` and `restaurant-owner` roles. Cart read/write, Stripe payment-session creation, and post-payment order creation all require authentication plus one of those roles. Cart controllers derive the target user from `req.user._id`; client-supplied `userId` values are ignored.
 

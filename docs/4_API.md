@@ -62,6 +62,18 @@ When `keyword` is supplied, search checks restaurant `name` and `address`, plus 
 | DELETE | `/eats/item/:foodId` | Admin | Delete food item |
 | PUT | `/eats/item/:foodId/review` | User | Add food review |
 
+## Reviews and AI summaries
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| PUT | `/ai/stores/:id/review` | User | Add restaurant review |
+| DELETE | `/ai/stores/:id/reviews/:reviewId` | Admin | Delete restaurant review |
+| DELETE | `/ai/items/:id/reviews/:reviewId` | Admin | Delete food-item review |
+| POST | `/ai/stores/:id/summary` | Authenticated user | Get or generate restaurant review summary |
+| POST | `/ai/items/:id/summary` | Authenticated user | Get or generate food-item review summary |
+
+AI summary endpoints first return a persisted summary when the review set is unchanged. On a cache miss, the content-hash result is reused for one hour in memory and then saved on the restaurant or food-item document. Adding or deleting a review invalidates the saved summary.
+
 Food creation accepts `imageUrl`; the controller converts it into the `images` array format.
 
 ## Cart

@@ -22,13 +22,13 @@ Can browse restaurants, menus, food details, public ratings, reviews, and availa
 
 ### Customer (`user`)
 
-Can manage their profile, maintain a single-restaurant cart, apply coupons, checkout, view their own orders, submit reviews, and view cached AI summaries.
+Can manage their profile, maintain a single-restaurant cart, apply coupons, checkout, view their own orders, submit reviews, and generate or view cached AI summaries for restaurants and food items.
 
 Public signup always creates a customer account. It cannot create an administrator account.
 
 ### Administrator (`admin`)
 
-Can manage restaurants, menus, food items, coupons, order statuses, restaurant review analysis, and AI food metadata. Admin-only APIs require authentication and role authorization.
+Can manage restaurants, menus, food items, coupons, reviews, order statuses, restaurant review analysis, and AI food metadata. Admin-only APIs require authentication and role authorization.
 
 The `restaurant-owner` role exists in the data model but restaurant ownership scoping is not part of the current release.
 
