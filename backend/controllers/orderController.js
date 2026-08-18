@@ -1,10 +1,10 @@
 const Order = require("../models/order");
-const FoodItem = require("../models/foodItem");
-const Cart = require("../models/cartModel");
 const { ObjectId } = require("mongodb");
 const ErrorHandler = require("../utils/errorHandler");
 const catchAsyncErrors = require("../middlewares/catchAsyncErrors");
 const dotenv = require("dotenv");
+const { finalizePaidOrder } = require("../services/orderFinalization");
+const User = require("../models/user");
 
 //setting up config file
 dotenv.config({ path: "./config/config.env" });
@@ -12,67 +12,59 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // Create a new order   =>  /api/v1/order/new
 exports.newOrder = catchAsyncErrors(async (req, res, next) => {
-  // console.log("id", req.body);
   const { session_id } = req.body;
+
+  if (typeof session_id !== "string" || !session_id.startsWith("cs_")) {
+    return next(new ErrorHandler("Invalid checkout session", 400));
+  }
 
   const session = await stripe.checkout.sessions.retrieve(session_id, {
     expand: ["customer"],
   });
-  console.log(session);
-  const cart = await Cart.findOne({ user: req.user._id })
-    .populate({
-      path: "items.foodItem",
-      select: "name price images",
-    })
-    .populate({
-      path: "restaurant",
-      select: "name",
-    });
-  console.log(cart);
 
-  let deliveryInfo = {
-    address:
-      session.shipping_details.address.line1 +
-      " " +
-      session.shipping_details.address.line1,
-    city: session.shipping_details.address.city,
-    phoneNo: session.customer_details.phone,
-    postalCode: session.shipping_details.address.postal_code,
-    country: session.shipping_details.address.country,
-  };
-  let orderItems = cart.items.map((item) => ({
-    name: item.foodItem.name,
-    quantity: item.quantity,
-    image: item.foodItem.images[0].url,
-    price: item.foodItem.price,
-    fooditem: item.foodItem._id,
-  }));
-
-  let paymentInfo = {
-    id: session.payment_intent,
-    status: session.payment_status,
-  };
-
-  const order = await Order.create({
-    orderItems,
-    deliveryInfo,
-    paymentInfo,
-    deliveryCharge: +session.shipping_cost.amount_subtotal / 100,
-    itemsPrice: +session.amount_subtotal / 100,
-    finalTotal: +session.amount_total / 100,
-    user: req.user.id,
-    restaurant: cart.restaurant._id,
-    paidAt: Date.now(),
-  });
-  console.log(order);
-
-  await Cart.findOneAndDelete({ user: req.user._id });
-
-  res.status(200).json({
-    success: true,
-    order,
-  });
+  const order = await finalizePaidOrder({ session, user: req.user });
+  return res.status(200).json({ success: true, order });
 });
+
+// Stripe webhook fallback for customers who close the success page.
+exports.stripeWebhook = async (req, res) => {
+  const signature = req.headers["stripe-signature"];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    return res.status(503).json({ received: false, message: "Stripe webhook is not configured" });
+  }
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
+  } catch (error) {
+    return res.status(400).json({ received: false, message: `Webhook signature verification failed: ${error.message}` });
+  }
+
+  if (!["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(event.type)) {
+    return res.status(200).json({ received: true });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(event.data.object.id);
+    if (session.payment_status !== "paid") {
+      return res.status(200).json({ received: true, ignored: "payment_not_paid" });
+    }
+
+    const sessionEmail = session.customer_details?.email || session.customer_email;
+    const user = sessionEmail ? await User.findOne({ email: sessionEmail.toLowerCase() }) : null;
+    if (!user) {
+      return res.status(400).json({ received: false, message: "No customer account matches this checkout session" });
+    }
+
+    await finalizePaidOrder({ session, user });
+    return res.status(200).json({ received: true });
+  } catch (error) {
+    // Return 5xx so Stripe retries transient finalization failures.
+    return res.status(500).json({ received: false, message: error.message || "Order finalization failed" });
+  }
+};
 
 // Get single order   =>   /api/v1/orders/:id
 exports.getSingleOrder = catchAsyncErrors(async (req, res, next) => {
@@ -83,6 +75,10 @@ exports.getSingleOrder = catchAsyncErrors(async (req, res, next) => {
 
   if (!order) {
     return next(new ErrorHandler("No Order found with this ID", 404));
+  }
+
+  if (req.user.role !== "admin" && order.user.toString() !== req.user.id.toString()) {
+    return next(new ErrorHandler("You are not allowed to view this order", 403));
   }
 
   res.status(200).json({
@@ -109,7 +105,10 @@ exports.myOrders = catchAsyncErrors(async (req, res, next) => {
 
 // Get all orders - ADMIN  =>   /api/v1/admin/orders/
 exports.allOrders = catchAsyncErrors(async (req, res, next) => {
-  const orders = await Order.find();
+  const orders = await Order.find()
+    .populate("user", "name email")
+    .populate("restaurant", "name")
+    .sort({ createdAt: -1 });
 
   let totalAmount = 0;
 
@@ -122,4 +121,47 @@ exports.allOrders = catchAsyncErrors(async (req, res, next) => {
     totalAmount,
     orders,
   });
+});
+
+exports.updateOrderStatus = catchAsyncErrors(async (req, res, next) => {
+  const allowedStatuses = ["Processing", "Confirmed", "Preparing", "Out for delivery", "Delivered", "Cancelled"];
+  const statusOrder = ["Processing", "Confirmed", "Preparing", "Out for delivery", "Delivered"];
+  const { status, adminMessage } = req.body;
+
+  if (!allowedStatuses.includes(status)) {
+    return next(new ErrorHandler("Invalid order status", 400));
+  }
+
+  const existingOrder = await Order.findById(req.params.id);
+  if (!existingOrder) return next(new ErrorHandler("No Order found with this ID", 404));
+
+  if (["Delivered", "Cancelled"].includes(existingOrder.orderStatus)) {
+    return next(new ErrorHandler("This order has reached its final status and cannot be changed", 400));
+  }
+
+  const currentIndex = statusOrder.indexOf(existingOrder.orderStatus);
+  const nextStatus = statusOrder[currentIndex + 1];
+  if (status !== nextStatus && status !== "Cancelled") {
+    return next(
+      new ErrorHandler(
+        `Order status must move to ${nextStatus || "the next stage"}, or be cancelled`,
+        400,
+      ),
+    );
+  }
+
+  const order = await Order.findByIdAndUpdate(
+    req.params.id,
+    {
+      orderStatus: status,
+      ...(typeof adminMessage === "string" ? { adminMessage: adminMessage.trim() } : {}),
+      ...(status === "Delivered" ? { deliveredAt: Date.now() } : {}),
+    },
+    { new: true, runValidators: true },
+  )
+    .populate("user", "name email")
+    .populate("restaurant", "name");
+
+  if (!order) return next(new ErrorHandler("No Order found with this ID", 404));
+  res.status(200).json({ success: true, order });
 });

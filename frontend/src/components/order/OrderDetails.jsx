@@ -34,6 +34,7 @@ const OrderDetails = () => {
     user = {},
     finalTotal,
     orderStatus = "Pending",
+    adminMessage = "",
   } = order || {};
 
   const deliveryDetails = deliveryInfo
@@ -80,6 +81,12 @@ const OrderDetails = () => {
         <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
           {/* Main Info */}
           <div className="space-y-6">
+            {adminMessage && (
+              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
+                <h2 className="font-display text-lg font-bold text-emerald-900">Message from the restaurant</h2>
+                <p className="mt-2 text-sm text-emerald-800">{adminMessage}</p>
+              </div>
+            )}
             {/* Delivery Information Card */}
             <div className="rounded-3xl border border-slate-200/80 bg-white/95 p-6 shadow-xl backdrop-blur-xl space-y-4">
               <h2 className="font-display text-lg font-bold text-slate-900 flex items-center gap-2">

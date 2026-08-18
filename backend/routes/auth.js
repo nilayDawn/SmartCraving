@@ -3,6 +3,17 @@ const rateLimit = require("express-rate-limit");
 const router = express.Router();
 const authController = require("../controllers/authController");
 
+const authAttemptLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 15,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many authentication attempts. Please try again later.",
+  },
+});
+
 const passwordResetRequestLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 5,
@@ -25,8 +36,8 @@ const passwordResetSubmitLimiter = rateLimit({
   },
 });
 
-router.post("/signup", authController.signup);
-router.post("/login", authController.login);
+router.post("/signup", authAttemptLimiter, authController.signup);
+router.post("/login", authAttemptLimiter, authController.login);
 router.post(
   "/forgetPassword",
   passwordResetRequestLimiter,

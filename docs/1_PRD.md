@@ -1,117 +1,123 @@
 # SmartCraving Product Requirements Document
 
-## 1. Product summary
+## 1. Product overview
 
-SmartCraving is an AI-powered web application for discovering restaurants, browsing their menus, adding food to a single-restaurant cart, paying online, and reviewing previous orders. The current product is configured around the Zyka restaurant use case, but the data model supports multiple restaurants.
+SmartCraving is a responsive food-discovery and online-ordering platform. Customers can discover restaurants, browse menus, review food, add items from one restaurant to a cart, apply coupons, pay through Stripe Checkout, and track their orders. Administrators manage restaurants, menus, food items, coupons, order status, and AI-assisted content.
 
-The product has two primary audiences: customers who want a fast food-ordering experience, and administrators/restaurant operators who maintain restaurants, menus, food items, coupons, and review insights.
+The client-facing requirements are maintained in [Client Requirements](./10_Client_Requirements.md).
 
-## 2. Goals
+## 2. Product goals
 
-1. Let visitors discover restaurants without signing in.
-2. Let customers create accounts, sign in, and keep authenticated sessions.
-3. Make menus and food details easy to browse on mobile and desktop.
-4. Keep a cart scoped to one restaurant at a time.
-5. Use Stripe Checkout to collect payment, delivery address, and phone number.
-6. Persist completed orders and make them available in customer order history.
-7. Give operators basic catalogue administration and AI-assisted content/review summaries.
+1. Provide a simple restaurant and food discovery experience.
+2. Support secure customer registration and authenticated sessions.
+3. Make cart, coupon, checkout, and order history easy to understand.
+4. Give administrators reliable catalogue, coupon, order, and review-management tools.
+5. Keep payment, inventory, authorization, and customer data integrity server-controlled.
 
-## 3. Non-goals in the current implementation
-
-- Multi-restaurant checkout in one order.
-- Driver assignment, live delivery tracking, or delivery-partner workflows.
-- A customer-facing restaurant-owner dashboard.
-- Refunds, cancellations, order-status updates, or Stripe webhooks.
-- Inventory reservation during checkout.
-- A complete coupon application flow in Stripe Checkout.
-
-## 4. Personas and permissions
+## 3. Users and permissions
 
 ### Visitor
 
-Can view the landing page, restaurant listings, menus, food details, and public reviews. A visitor can access login, registration, and password-recovery screens.
+Can browse restaurants, menus, food details, public ratings, reviews, and available offers. Login is required for cart actions, checkout, reviews, order history, and AI-generated review summaries.
 
 ### Customer (`user`)
 
-Can manage a profile, maintain a cart, start checkout, create an order after successful payment, view orders, view order details, and submit food or restaurant reviews.
+Can manage their profile, maintain a single-restaurant cart, apply coupons, checkout, view their own orders, submit reviews, and view cached AI summaries.
 
-### Restaurant owner (`restaurant-owner`)
-
-The role exists in the user schema. Current route guards primarily grant catalogue administration to `admin`; owner-specific authorization is not implemented.
+Public signup always creates a customer account. It cannot create an administrator account.
 
 ### Administrator (`admin`)
 
-Can create/delete restaurants, create/delete menus, create/update/delete food items, manage coupons, and run restaurant review analysis. These actions should be protected by authentication plus the admin-role middleware.
+Can manage restaurants, menus, food items, coupons, order statuses, restaurant review analysis, and AI food metadata. Admin-only APIs require authentication and role authorization.
 
-## 5. Functional requirements
+The `restaurant-owner` role exists in the data model but restaurant ownership scoping is not part of the current release.
 
-### Restaurant discovery
+## 4. Functional scope
 
-- Show restaurant count and restaurant cards.
-- Support keyword search through the `keyword` query parameter.
-- Allow client-side sorting by ratings or review count.
-- Allow a vegetarian-only view based on `isVeg`.
-- Open a restaurant detail/menu view.
+### Discovery and catalogue
 
-### Menu and food browsing
+- Search restaurants by name, address, or food-item name.
+- Browse restaurant menus and food details.
+- Show food images, descriptions, prices, stock, ratings, reviews, and optional AI metadata.
+- Allow administrators to create, update, and delete catalogue records.
 
-- Load menus for a restaurant and populate food items.
-- Display food name, description, price, images, stock, rating, and reviews.
-- Expose optional AI metadata: description, tags, allergens, serving size, and best-for meal times.
+### Cart and coupons
 
-### Account management
-
-- Register with name, email, password confirmation, and a ten-digit phone number.
-- Log in and log out using an HTTP-only JWT cookie or Bearer token.
-- Load the current user when the React app starts.
-- Update profile information and avatar.
-- Change password.
-- Request and complete a password reset through an emailed token.
-
-### Cart
-
-- Add an item with a quantity, increase or replace its quantity, remove it, and fetch it.
-- If an item from another restaurant is added, replace the existing cart with the new restaurant’s cart.
+- Allow customers to add food from one restaurant at a time.
+- Adding food from another restaurant replaces the existing cart.
+- Allow quantity changes only within available stock.
+- Display active coupons in the cart.
+- Allow manual coupon-code entry or one-click application.
+- Validate minimum order amount, expiry, percentage discount, and maximum discount.
+- Revalidate coupon and cart prices on the server during checkout.
 
 ### Checkout and orders
 
-- Send cart line items to Stripe Checkout.
-- Collect customer email, phone number, and delivery address.
-- Apply the configured fixed delivery charge in the Stripe session.
-- Redirect to `/success` after payment or `/cart` after cancellation.
-- Retrieve the completed Stripe session and persist an Order document.
-- Delete the cart after order creation.
-- Show customer order history and individual order details.
+- Create a Stripe Checkout session from the server-side cart.
+- Collect customer email, phone, shipping address, and payment.
+- Apply coupon discounts and delivery charges in Stripe.
+- Create an order only after Stripe reports a paid session.
+- Prevent duplicate orders when the success page is refreshed or revisited.
+- Decrement stock only after successful payment and restore it if order creation fails.
+- Show customer orders and order details only to the owning customer or an administrator.
+
+### Order status
+
+Statuses progress forward through:
+
+`Processing → Confirmed → Preparing → Out for delivery → Delivered`
+
+An order may be cancelled before reaching a terminal status. `Delivered` and `Cancelled` are terminal and cannot be changed. Administrators can optionally attach a customer message to a status update.
 
 ### Reviews and AI
 
-- Accept restaurant and food-item reviews and update average ratings/counts.
-- Generate food metadata without saving it, or generate and save it to a food item.
-- Analyze restaurant reviews into sentiment, summary bullets, and top mentions.
-- Fall back to a local review summary if the external review-AI call fails or returns invalid JSON.
+- Authenticated customers can submit food and restaurant reviews.
+- Review summaries are cached by entity and review content.
+- Authenticated users can read existing AI summaries.
+- Administrators can generate missing summaries and AI food metadata.
+- AI requests are authenticated, rate-limited, input-validated, and protected from unauthorised quota usage.
 
-## 6. Non-functional requirements
+## 5. Security requirements
 
-- Frontend: React single-page application, responsive layout, keyboard-accessible controls, visible loading/error states.
-- Backend: Express API with a stable `/api/v1` prefix.
-- Persistence: MongoDB through Mongoose.
-- Authentication: hashed passwords and signed JWTs; authenticated browser requests use credentials.
-- Payments: Stripe Checkout; secret keys remain server-side.
-- Integrations: Cloudinary for images, SMTP/Mailtrap for password reset, and Groq for AI enrichment.
-- CORS allows only configured frontend origins.
+- Public signup creates only `user` accounts.
+- Authentication uses an HTTP-only JWT cookie; the frontend does not store JWTs in localStorage.
+- Protected routes require authentication in both frontend and backend.
+- Backend authorization is authoritative and never trusts client-provided user IDs, prices, roles, or order ownership.
+- Payment sessions must be paid and belong to the authenticated customer.
+- Order creation is idempotent by Stripe session ID.
+- Credentialed CORS accepts only explicitly configured origins.
+- Authentication, payment, coupon, review, and AI endpoints are rate-limited.
+- Request bodies and uploads have size limits.
+- Admin writes use explicit field allowlists and schema validation.
 
-## 7. Success criteria
+## 6. Performance requirements
 
-- A new customer can register, browse, add food, pay in Stripe test mode, and see the resulting order.
-- An authenticated customer can reload the page and remain signed in while the JWT is valid.
-- Admin catalogue changes are rejected for unauthenticated/non-admin users.
-- Public restaurant and food pages remain usable when optional AI services are unavailable.
-- Frontend production build and lint complete successfully.
+- Cache public restaurant lists for 30 seconds in memory.
+- Cache restaurant menus for 60 seconds in memory.
+- Cache available coupons for 60 seconds in memory.
+- Invalidate caches after catalogue mutations.
+- Do not cache cart, payment, order, or authentication data.
+- Lazy-load administrator screens.
+- Cancel active requests when key detail/admin screens unmount.
+- Refresh order lists periodically while the order-list screen is open.
 
-## 8. Risks and open decisions
+## 7. Acceptance criteria
 
-- Payment-to-order creation currently depends on the success-page request rather than a Stripe webhook. A customer could pay successfully while order creation is interrupted.
-- Cart mutation endpoints accept `userId` from the request body. They should use `req.user.id` after authentication is added.
-- Order creation assumes a cart, Stripe shipping details, and at least one item image exist; validation is needed before production use.
-- Reviews are public write endpoints. Decide whether reviews require authentication and whether duplicate reviews are allowed.
-- Coupon validation needs a coupon-code filter and integration with Stripe amount calculation before it is advertised as a checkout feature.
+- A visitor can browse without an account.
+- A new signup cannot obtain admin privileges by modifying the request payload.
+- A customer can add items, view food details from the cart, apply a valid coupon, and see the discount before checkout.
+- Invalid, expired, under-minimum, or malformed coupons are rejected consistently in the UI and API.
+- Stripe checkout and the final order use the same server-verified coupon calculation.
+- Refreshing the payment success URL does not create a duplicate order.
+- A customer cannot view another customer’s order by changing the URL.
+- Terminal order statuses cannot be changed.
+- Admin-only AI and catalogue operations reject unauthenticated or non-admin requests.
+- Frontend lint/build and backend syntax checks pass in CI.
+
+## 8. Current exclusions and future decisions
+
+- Restaurant-owner ownership isolation is not implemented yet.
+- Signed Stripe webhooks finalize paid sessions even when the customer closes the browser; the success flow remains an authenticated idempotent retry/fallback.
+- Refund workflow and customer self-cancellation are not included.
+- Driver assignment and live map tracking are not included.
+- Cross-restaurant checkout is not included.

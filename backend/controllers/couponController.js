@@ -1,9 +1,27 @@
 const Coupon = require("../models/couponModel");
 const ErrorHandler = require("../utils/errorHandler");
 const catchAsync = require("../middlewares/catchAsyncErrors");
+const { calculateCouponDiscount } = require("../utils/coupon");
+
+const buildCouponPayload = (body) => {
+  const allowedFields = ["couponName", "subTitle", "minAmount", "maxDiscount", "discount", "details", "expire"];
+  const payload = Object.fromEntries(
+    allowedFields.filter((field) => Object.prototype.hasOwnProperty.call(body, field))
+      .map((field) => [field, body[field]]),
+  );
+
+  if (payload.couponName) payload.couponName = String(payload.couponName).trim().toUpperCase();
+  if (payload.expire && /^\d{4}-\d{2}-\d{2}$/.test(String(payload.expire))) {
+    const expiry = new Date(`${payload.expire}T23:59:59.999Z`);
+    payload.expire = expiry;
+  }
+
+  return payload;
+};
 
 exports.createCoupon = catchAsync(async (req, res, next) => {
-  const coupon = await Coupon.create(req.body);
+  const payload = buildCouponPayload(req.body);
+  const coupon = await Coupon.create(payload);
   res.status(200).json({
     status: "success",
     data: coupon,
@@ -20,7 +38,8 @@ exports.getCoupon = catchAsync(async (req, res, next) => {
 });
 
 exports.updateCoupon = catchAsync(async (req, res, next) => {
-  const coupon = await Coupon.findByIdAndUpdate(req.params.couponId, req.body, {
+  const payload = buildCouponPayload(req.body);
+  const coupon = await Coupon.findByIdAndUpdate(req.params.couponId, payload, {
     new: true,
     runValidators: true,
   });
@@ -46,73 +65,31 @@ exports.deleteCoupon = catchAsync(async (req, res, next) => {
 
 exports.couponValidate = catchAsync(async (req, res, next) => {
   const { couponCode, cartItemsTotalAmount } = req.body;
-
-  const coupon = await Coupon.aggregate([
-    {
-      $addFields: {
-        finalTotal: {
-          $cond: [
-            // if cartItemsTotalAmount >= minAmount
-            { $gte: [cartItemsTotalAmount, "$minAmount"] },
-            // If condition is true, apply discount
-            {
-              $subtract: [
-                cartItemsTotalAmount,
-                {
-                  $min: [
-                    {
-                      $multiply: [
-                        cartItemsTotalAmount,
-                        { $divide: ["$discount", 100] },
-                      ],
-                    },
-                    "$maxDiscount", // Replace maxDiscount with the actual value
-                  ],
-                },
-              ],
-            },
-            // else use original amount
-            cartItemsTotalAmount,
-          ],
-        },
-        message: {
-          $cond: [
-            { $gte: [cartItemsTotalAmount, "$minAmount"] },
-            "",
-            {
-              $concat: [
-                "add ₹ ",
-                {
-                  $toString: {
-                    $subtract: ["$minAmount", cartItemsTotalAmount],
-                  },
-                },
-                " more to avail this offer",
-              ],
-            },
-          ],
-        },
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        subTitle: 1,
-        couponName: 1,
-        details: 1,
-        minAmount: 1,
-        finalTotal: 1,
-        message: 1,
-      },
-    },
-  ]);
-
-  if (!coupon) {
+  const total = Number(cartItemsTotalAmount);
+  if (!couponCode || !Number.isFinite(total) || total < 0) {
     return next(new ErrorHandler("Invalid coupon code.", 404));
   }
 
+  const coupon = await Coupon.findOne({
+    couponName: String(couponCode).trim().toUpperCase(),
+    expire: { $gt: new Date() },
+  }).lean();
+
+  if (!coupon) return next(new ErrorHandler("Invalid or expired coupon code.", 404));
+
+  if (total < coupon.minAmount) {
+    return next(
+      new ErrorHandler(`Add ₹${(coupon.minAmount - total).toFixed(2)} more to use this coupon`, 400),
+    );
+  }
+
+  const calculation = calculateCouponDiscount(coupon, total);
+
   res.status(200).json({
     status: "success",
-    data: coupon,
+    data: {
+      ...coupon,
+      ...calculation,
+    },
   });
 });

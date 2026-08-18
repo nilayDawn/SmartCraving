@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../../utils/api";
 
 const AdminDashboard = () => {
-  const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
@@ -61,6 +60,12 @@ const AdminDashboard = () => {
 
           <div className="flex flex-wrap items-center gap-3">
             <Link
+              to="/admin/coupons"
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 font-display text-sm font-bold text-white backdrop-blur-md transition duration-200 hover:bg-white/20 active:scale-[0.98]"
+            >
+              <span>🎟️</span> Manage Coupons
+            </Link>
+            <Link
               to="/admin/restaurants/new"
               className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-3 font-display text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition duration-200 hover:-translate-y-0.5 hover:from-emerald-600 hover:to-teal-600 active:scale-[0.98]"
             >
@@ -108,6 +113,20 @@ const AdminDashboard = () => {
             <h3 className="font-display text-sm font-extrabold text-indigo-700">Verified Administrator</h3>
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-4 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Promotions</p>
+          <h2 className="mt-1 font-display text-xl font-extrabold text-slate-900">Create and manage coupons</h2>
+          <p className="mt-1 text-sm text-slate-600">Add discount codes, update offers, or remove expired coupons.</p>
+        </div>
+        <Link
+          to="/admin/coupons"
+          className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
+        >
+          Open Coupons
+        </Link>
       </div>
 
       {/* Restaurants List Table / Grid */}

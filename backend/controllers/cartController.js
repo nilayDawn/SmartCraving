@@ -1,14 +1,29 @@
 const Cart = require("../models/cartModel");
 const FoodItem = require("../models/foodItem");
 const Restaurant = require("../models/restaurant");
+const Menu = require("../models/menu");
 
 async function addItemToCart(req, res) {
-  const { userId, foodItemId, restaurantId, quantity } = req.body;
+  const { foodItemId, restaurantId, quantity } = req.body;
+  const userId = req.user._id;
 
   try {
     const foodItem = await FoodItem.findById(foodItemId);
     if (!foodItem) {
       return res.status(404).json({ message: "Food item not found" });
+    }
+
+    let foodRestaurantId = foodItem.restaurant?.toString();
+    if (!foodRestaurantId) {
+      const menu = await Menu.findOne({ "menu.items": foodItem._id }).select("restaurant");
+      foodRestaurantId = menu?.restaurant?.toString();
+    }
+    if (!foodRestaurantId || foodRestaurantId !== restaurantId) {
+      return res.status(400).json({ message: "Food item does not belong to this restaurant" });
+    }
+
+    if (!Number.isInteger(Number(quantity)) || Number(quantity) < 1) {
+      return res.status(400).json({ message: "Quantity must be at least 1" });
     }
 
     const restaurant = await Restaurant.findById(restaurantId);
@@ -66,7 +81,8 @@ async function addItemToCart(req, res) {
 // Update Cart
 
 async function updateCartItemQuantity(req, res) {
-  const { userId, foodItemId, quantity } = req.body;
+  const { foodItemId, quantity } = req.body;
+  const userId = req.user._id;
 
   try {
     let cart = await Cart.findOne({ user: userId });
@@ -106,7 +122,8 @@ async function updateCartItemQuantity(req, res) {
 //Delete cart
 
 async function deleteCartItem(req, res) {
-  const { userId, foodItemId } = req.body;
+  const { foodItemId } = req.body;
+  const userId = req.user._id;
 
   try {
     let cart = await Cart.findOne({ user: userId });
@@ -150,7 +167,7 @@ async function deleteCartItem(req, res) {
 //Fetch cart Item
 
 async function getCartItem(req, res) {
-  const userId = req.user;
+  const userId = req.user._id;
   try {
     const cart = await Cart.findOne({ user: userId })
       .populate({

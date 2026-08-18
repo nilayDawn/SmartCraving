@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { lazy, Suspense, useEffect } from "react";
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./components/Home";
@@ -13,6 +13,8 @@ import Profile from "./components/user/Profile";
 import UpdateProfile from "./components/user/UpdateProfile";
 import ForgotPassword from "./components/user/ForgotPassword";
 import NewPassword from "./components/user/NewPassword";
+import GuestRoute from "./components/user/GuestRoute";
+import ProtectedRoute from "./components/user/ProtectedRoute";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -26,9 +28,13 @@ import FoodItemDetails from "./components/FoodItemDetails";
 import Landing from "./components/Landing";
 
 import AdminRoute from "./components/admin/AdminRoute";
-import AdminDashboard from "./components/admin/AdminDashboard";
-import AddRestaurant from "./components/admin/AddRestaurant";
-import AddFoodItem from "./components/admin/AddFoodItem";
+import Loader from "./components/layout/Loader";
+
+const AdminDashboard = lazy(() => import("./components/admin/AdminDashboard"));
+const AddRestaurant = lazy(() => import("./components/admin/AddRestaurant"));
+const AddFoodItem = lazy(() => import("./components/admin/AddFoodItem"));
+const AdminOrders = lazy(() => import("./components/admin/AdminOrders"));
+const AdminCoupons = lazy(() => import("./components/admin/AdminCoupons"));
 
 function App() {
   useEffect(() => {
@@ -42,6 +48,7 @@ function App() {
         <div className="min-h-screen bg-slate-50 text-slate-900">
           <Header />
           <main className="mx-auto min-h-[calc(100vh-10rem)] w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <Suspense fallback={<Loader />}>
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/restaurants" element={<Home />} />
@@ -79,12 +86,42 @@ function App() {
                   </AdminRoute>
                 }
               />
+              <Route
+                path="/admin/orders"
+                element={
+                  <AdminRoute>
+                    <AdminOrders />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/coupons"
+                element={
+                  <AdminRoute>
+                    <AdminCoupons />
+                  </AdminRoute>
+                }
+              />
 
               {/* user */}
-              <Route path="/users/login" element={<Login />} />
-              <Route path="/users/signup" element={<Register />} />
-              <Route path="/users/me" element={<Profile />} />
-              <Route path="/users/me/update" element={<UpdateProfile />} />
+              <Route
+                path="/users/login"
+                element={
+                  <GuestRoute>
+                    <Login />
+                  </GuestRoute>
+                }
+              />
+              <Route
+                path="/users/signup"
+                element={
+                  <GuestRoute>
+                    <Register />
+                  </GuestRoute>
+                }
+              />
+              <Route path="/users/me" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/users/me/update" element={<ProtectedRoute><UpdateProfile /></ProtectedRoute>} />
               <Route path="/users/forgetPassword" element={<ForgotPassword />} />
               <Route path="/users/resetPassword/:token" element={<NewPassword />} />
 
@@ -93,10 +130,11 @@ function App() {
               <Route path="/cart" element={<Cart />} />
 
               {/* order */}
-              <Route path="/success" element={<OrderSuccess />} />
-              <Route path="/eats/orders/me/myOrders" element={<ListOrders />} />
-              <Route path="/eats/orders/:id" element={<OrderDetails />} />
+              <Route path="/success" element={<ProtectedRoute><OrderSuccess /></ProtectedRoute>} />
+              <Route path="/eats/orders/me/myOrders" element={<ProtectedRoute><ListOrders /></ProtectedRoute>} />
+              <Route path="/eats/orders/:id" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
             </Routes>
+            </Suspense>
           </main>
           <Footer />
         </div>

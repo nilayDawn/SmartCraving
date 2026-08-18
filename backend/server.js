@@ -17,8 +17,8 @@
 const dotenv = require("dotenv");
 dotenv.config({ path: "./config/config.env" });
 
-if (process.env.NODE_ENV === "PRODUCTION") {
-  const requiredProductionEnv = ["FRONTEND_URL"];
+if (process.env.NODE_ENV?.toUpperCase() === "PRODUCTION") {
+  const requiredProductionEnv = ["FRONTEND_URL", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"];
   const missingProductionEnv = requiredProductionEnv.filter(
     (name) => !process.env[name] || !process.env[name].trim()
   );

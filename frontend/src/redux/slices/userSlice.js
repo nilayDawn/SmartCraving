@@ -3,7 +3,9 @@ import {createSlice} from "@reduxjs/toolkit"
 //create initialstate
 const initialState ={
     user:null,
-    loading:false,
+    // The app restores the current session on startup. Keep protected and
+    // guest-only routes from rendering before that check finishes.
+    loading:true,
     isAuthenticated:false,
     error:null,
     isUpdated:false,

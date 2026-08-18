@@ -1,7 +1,9 @@
 import React from "react";
+import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 
 const Footer = () => {
+  const user = useSelector((state) => state.user.user);
   return (
     <footer className="mt-16 border-t border-slate-200/80 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-6 py-10 sm:px-8">
@@ -20,8 +22,8 @@ const Footer = () => {
 
           <div className="flex flex-wrap items-center gap-6 text-xs font-semibold text-slate-600">
             <Link to="/" className="transition hover:text-emerald-700">Home</Link>
-            <Link to="/cart" className="transition hover:text-emerald-700">Cart</Link>
-            <Link to="/eats/orders/me/myOrders" className="transition hover:text-emerald-700">Orders</Link>
+            {user?.role !== "admin" && <Link to="/cart" className="transition hover:text-emerald-700">Cart</Link>}
+            <Link to={user?.role === "admin" ? "/admin/orders" : "/eats/orders/me/myOrders"} className="transition hover:text-emerald-700">Orders</Link>
             <Link to="/users/me" className="transition hover:text-emerald-700">Profile</Link>
           </div>
         </div>

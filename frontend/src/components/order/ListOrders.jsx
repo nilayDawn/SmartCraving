@@ -21,6 +21,8 @@ const ListOrders = () => {
   useEffect(() => {
     dispatch(myOrders());
     dispatch(getRestaurants());
+    const refreshTimer = setInterval(() => dispatch(myOrders()), 30000);
+    return () => clearInterval(refreshTimer);
   }, [dispatch]);
 
   useEffect(() => {
@@ -67,18 +69,21 @@ const ListOrders = () => {
         const isDelivered = row.status.toLowerCase().includes("delivered");
         const isProcessing = row.status.toLowerCase().includes("processing") || row.status.toLowerCase().includes("preparing");
         return (
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
-              isDelivered
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : isProcessing
-                ? "bg-amber-50 text-amber-800 border border-amber-200"
-                : "bg-rose-50 text-rose-700 border border-rose-200"
-            }`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${isDelivered ? "bg-emerald-500" : isProcessing ? "bg-amber-500 animate-pulse" : "bg-rose-500"}`} />
-            {row.status}
-          </span>
+          <div className="space-y-1.5 py-2">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+                isDelivered
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : isProcessing
+                  ? "bg-amber-50 text-amber-800 border border-amber-200"
+                  : "bg-rose-50 text-rose-700 border border-rose-200"
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${isDelivered ? "bg-emerald-500" : isProcessing ? "bg-amber-500 animate-pulse" : "bg-rose-500"}`} />
+              {row.status}
+            </span>
+            {row.adminMessage && <p className="max-w-52 text-xs text-slate-500">{row.adminMessage}</p>}
+          </div>
         );
       },
       sortable: true,
@@ -110,6 +115,7 @@ const ListOrders = () => {
       amountNum: order.finalTotal,
       amount: `₹${order.finalTotal}`,
       status: order.orderStatus,
+      adminMessage: order.adminMessage,
       date: new Date(order.createdAt).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",

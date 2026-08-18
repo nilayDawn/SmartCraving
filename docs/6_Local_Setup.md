@@ -27,6 +27,7 @@ NODE_ENV=DEVELOPMENT
 DB_LOCAL_URI=mongodb://127.0.0.1:27017/smartcraving
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRE=90d
+JWT_COOKIE_EXPIRES_DAYS=90
 FRONTEND_URL=http://localhost:5173
 
 # Optional integrations
@@ -44,10 +45,15 @@ RESEND_API_KEY=
 RESET_URL_ORIGIN=http://localhost:5173
 STRIPE_SECRET_KEY=sk_test_replace_me
 STRIPE_API_KEY=pk_test_replace_me
+STRIPE_WEBHOOK_SECRET=whsec_replace_me
 GROQ_API_KEY=
+# Optional; defaults to openai/gpt-oss-20b. Override only with a currently supported Groq model.
+GROQ_MODEL=openai/gpt-oss-20b
 ```
 
 `FRONTEND_URL` supports comma-separated origins for CORS. The backend loads this file from `backend/server.js` and payment/order code reads it directly too.
+
+For Stripe webhook testing, create a webhook endpoint at `/api/v1/stripe/webhook` and subscribe to `checkout.session.completed` and `checkout.session.async_payment_succeeded`. Store the signing secret in `STRIPE_WEBHOOK_SECRET`. Locally, Stripe CLI can forward events with `stripe listen --forward-to localhost:4000/api/v1/stripe/webhook`.
 
 ## 4. Configure the frontend
 

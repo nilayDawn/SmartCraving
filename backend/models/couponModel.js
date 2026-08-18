@@ -5,7 +5,9 @@ const couponSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    upperCase: true,
+    uppercase: true,
+    trim: true,
+    maxlength: 40,
   },
   subTitle: {
     type: "String",
@@ -14,13 +16,17 @@ const couponSchema = new mongoose.Schema({
   minAmount: {
     type: Number,
     required: true,
+    min: 0,
   },
   maxDiscount: {
     type: Number,
+    min: 0,
   },
   discount: {
     type: Number,
     required: true,
+    min: 0,
+    max: 100,
   },
   details: {
     type: String,

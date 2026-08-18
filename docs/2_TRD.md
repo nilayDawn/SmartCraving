@@ -85,7 +85,7 @@ The Redux store contains `restaurants`, `menus`, `user`, `cart`, and `order` sli
 ## 6. Authentication design
 
 1. Signup/login creates a JWT containing the user ID.
-2. `sendToken` returns/sends the token according to the current implementation.
+2. `sendToken` issues the session through the HTTP-only `jwt` cookie; the frontend does not persist the token in local storage.
 3. Protected routes accept `Authorization: Bearer <token>` or the `jwt` cookie.
 4. The backend verifies the signature, loads the user, and rejects tokens issued before `passwordChangedAt`.
 5. The frontend calls `/v1/users/me` at startup to restore session state.
@@ -94,7 +94,7 @@ Passwords are hashed with bcrypt before save and excluded from normal queries wi
 
 ## 7. Payment design
 
-The backend creates a Stripe Checkout Session from cart items. The session uses INR, collects phone and shipping address, adds a fixed delivery option, and redirects to the configured frontend URL. The success page sends `session_id` to `/v1/eats/orders/new`, where the server retrieves the session, creates an order, and deletes the cart.
+The backend creates a Stripe Checkout Session from the authenticated server-side cart. The session uses INR, collects phone and shipping address, applies the verified coupon calculation, adds a fixed delivery option, and redirects to the configured frontend URL. Stripe sends signed `checkout.session.completed` or asynchronous-success events to `/api/v1/stripe/webhook`; the server verifies payment status and customer ownership, rechecks stock, and creates or returns the order idempotently by Stripe session ID. The success page still calls `/v1/eats/orders/new` as a safe retry/fallback.
 
 Payment amounts must be calculated and validated server-side. Never expose `STRIPE_SECRET_KEY` or use it in frontend code.
 

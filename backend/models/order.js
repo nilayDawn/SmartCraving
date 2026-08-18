@@ -156,6 +156,12 @@ const orderSchema = mongoose.Schema({
       type: String,
     },
   },
+  stripeSessionId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+  },
   paidAt: {
     type: Date,
   },
@@ -182,6 +188,12 @@ const orderSchema = mongoose.Schema({
     type: String,
     required: true,
     default: "Processing",
+  },
+  adminMessage: {
+    type: String,
+    trim: true,
+    maxlength: 500,
+    default: "",
   },
   deliveredAt: {
     type: Date,

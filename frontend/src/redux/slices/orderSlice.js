@@ -55,6 +55,7 @@ const orderSlice = createSlice({
         // Order details
         orderDetailsRequest:(state)=>{
             state.loading=true;
+            state.order=null;
         },
         orderDetailsSuccess:(state,action)=>{
             state.loading= false,

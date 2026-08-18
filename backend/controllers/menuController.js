@@ -108,7 +108,10 @@ exports.getAllMenus = catchAsync(async (req, res, next) => {
 // CREATE MENU
 exports.createMenu = catchAsync(async (req, res, next) => {
 
-  const menu = await Menu.create(req.body);
+  const menu = await Menu.create({
+    restaurant: req.params.storeId || req.body.restaurant,
+    menu: Array.isArray(req.body.menu) ? req.body.menu : [],
+  });
 
   res.status(201).json({
     status: "success",

@@ -47,7 +47,7 @@ Return JSON in this EXACT format:
       const response = await axios.post(
         "https://api.groq.com/openai/v1/chat/completions",
         {
-          model: "llama-3.1-8b-instant",
+          model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.4,
           max_tokens: 300,

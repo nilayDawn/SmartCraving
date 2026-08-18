@@ -11,7 +11,8 @@ const FoodItemDetails = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { user } = useSelector((state) => state.user);
+  const { user, isAuthenticated } = useSelector((state) => state.user);
+  const isAdmin = user?.role === "admin";
   const { cartItems } = useSelector((state) => state.cart);
   const [food, setFood] = useState(null);
   const [restaurant, setRestaurant] = useState(null);
@@ -21,34 +22,54 @@ const FoodItemDetails = () => {
   const [reviewError, setReviewError] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [cartError, setCartError] = useState("");
+  const [showFoodAI, setShowFoodAI] = useState(false);
+  const [foodAISummary, setFoodAISummary] = useState({ sentiment: "", summaryBullets: [], topMentions: [] });
+  const [foodAILoading, setFoodAILoading] = useState(false);
+  const [foodAIError, setFoodAIError] = useState("");
 
   useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
     const loadFood = async () => {
       try {
-        const { data } = await api.get(`/v1/eats/item/${id}`);
-        setFood(data.data);
+        const { data } = await api.get(`/v1/eats/item/${id}`, { signal: controller.signal });
+        if (active) setFood(data.data);
       } catch (requestError) {
-        setError(requestError.response?.data?.message || "Unable to load food details.");
+        if (active && requestError.code !== "ERR_CANCELED") {
+          setError(requestError.response?.data?.message || "Unable to load food details.");
+        }
       }
     };
 
     loadFood();
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [id]);
 
   useEffect(() => {
-    const restaurantId = food?.restaurant?._id || food?.restaurant || searchParams.get("restaurant");
+    const rawRest = food?.restaurant || searchParams.get("restaurant");
+    const restaurantId = typeof rawRest === "object" && rawRest !== null ? rawRest._id : rawRest;
     if (!restaurantId) return;
 
+    const controller = new AbortController();
+    let active = true;
     const loadRestaurant = async () => {
       try {
-        const { data } = await api.get(`/v1/eats/stores/${restaurantId}`);
-        setRestaurant(data.data);
-      } catch {
+        const { data } = await api.get(`/v1/eats/stores/${restaurantId}`, { signal: controller.signal });
+        if (active) setRestaurant(data.data);
+      } catch (requestError) {
         // The dish details remain usable even when restaurant metadata is unavailable.
+        if (active && requestError.code !== "ERR_CANCELED") setRestaurant(null);
       }
     };
 
     loadRestaurant();
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [food, searchParams]);
 
   useEffect(() => {
@@ -68,8 +89,10 @@ const FoodItemDetails = () => {
   };
 
   const addToCart = async () => {
+    if (isAdmin) return;
     if (!user) return navigate("/users/login");
-    const restaurantId = food.restaurant?._id || food.restaurant || searchParams.get("restaurant");
+    const rawRest = food?.restaurant || searchParams.get("restaurant");
+    const restaurantId = typeof rawRest === "object" && rawRest !== null ? rawRest._id : rawRest;
     if (!restaurantId) {
       setCartError("This food item is not linked to a restaurant.");
       return;
@@ -96,6 +119,26 @@ const FoodItemDetails = () => {
       setReviewError(requestError.response?.data?.message || "Unable to submit review.");
     } finally {
       setReviewSubmitting(false);
+    }
+  };
+
+  const loadFoodAISummary = async () => {
+    if (showFoodAI) {
+      setShowFoodAI(false);
+      return;
+    }
+
+    setShowFoodAI(true);
+    setFoodAILoading(true);
+    setFoodAIError("");
+
+    try {
+      const { data } = await api.post(`/v1/ai/items/${food._id}/summary`);
+      setFoodAISummary(data.aiData);
+    } catch (requestError) {
+      setFoodAIError(requestError.response?.data?.message || "Unable to generate the food summary.");
+    } finally {
+      setFoodAILoading(false);
     }
   };
 
@@ -161,7 +204,7 @@ const FoodItemDetails = () => {
               </div>
             </div>
 
-            {cartItem ? (
+            {!isAdmin && (cartItem ? (
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center rounded-2xl bg-slate-100 p-1.5 border border-slate-200/80">
                   <button
@@ -199,7 +242,7 @@ const FoodItemDetails = () => {
               >
                 {food.stock ? " Add to Cart" : "Currently Unavailable"}
               </button>
-            )}
+            ))}
 
             {cartError && <p className="rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{cartError}</p>}
 
@@ -217,6 +260,30 @@ const FoodItemDetails = () => {
                     #{tag}
                   </span>
                 ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={isAuthenticated ? loadFoodAISummary : () => navigate("/users/login")}
+              className="flex w-full items-center justify-between rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs font-bold text-amber-900 transition hover:bg-amber-100"
+            >
+              <span>✨ AI Guest Review Summary</span>
+              <span>{showFoodAI ? "▲" : "▼"}</span>
+            </button>
+
+            {showFoodAI && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 text-xs leading-relaxed text-slate-700">
+                {foodAILoading ? <p>Analyzing food reviews...</p> : foodAIError ? <p className="text-rose-600">{foodAIError}</p> : (
+                  <>
+                    <p className="font-bold capitalize text-amber-900">{foodAISummary.sentiment || "No summary yet"} sentiment</p>
+                    {foodAISummary.summaryBullets.length ? (
+                      <ul className="mt-2 space-y-1.5">
+                        {foodAISummary.summaryBullets.map((point, index) => <li key={`${point}-${index}`}>• {point}</li>)}
+                      </ul>
+                    ) : <p className="mt-2">AI guest insights will appear after this dish receives reviews.</p>}
+                  </>
+                )}
               </div>
             )}
           </div>

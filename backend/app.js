@@ -11,6 +11,7 @@ const cors = require("cors");
 
 const aiRoutes = require("./routes/ai.routes");
 const errorMiddleware = require("./middlewares/errors");
+const { stripeWebhook } = require("./controllers/orderController");
 
 // Parse explicit frontend URLs. Never allow arbitrary deployment subdomains.
 const envOrigins = (process.env.FRONTEND_URL || "")
@@ -18,7 +19,7 @@ const envOrigins = (process.env.FRONTEND_URL || "")
   .map((origin) => origin.trim().replace(/\/$/, "")) 
   .filter(Boolean);
 
-const defaultOrigins = process.env.NODE_ENV === "PRODUCTION"
+const defaultOrigins = process.env.NODE_ENV?.toUpperCase() === "PRODUCTION"
   ? []
   : ["http://localhost:5173", "http://localhost:3000"];
 
@@ -30,10 +31,7 @@ const corsOptions = {
     // 1. Allow non-browser requests (Postman, health checks, server-to-server)
     if (!origin) return callback(null, true);
 
-    const isAllowed =
-      allowedOrigins.includes(origin) ||
-      origin.endsWith(".vercel.app") ||
-      origin.endsWith(".onrender.com");
+    const isAllowed = allowedOrigins.includes(origin);
 
     if (isAllowed) {
       return callback(null, true);
@@ -51,11 +49,17 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
-app.use(express.json({ limit: "50mb" }));
-app.use(bodyParser.json({ limit: "50mb" }));
-app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
+// Stripe signs the exact raw request body. This route must run before JSON parsing.
+app.post("/api/v1/stripe/webhook", express.raw({ type: "application/json", limit: "1mb" }), stripeWebhook);
+
+app.use(express.json({ limit: "5mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "100kb" }));
 app.use(cookieParser());
-app.use(fileUpload());
+app.use(fileUpload({
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  abortOnLimit: true,
+  createParentPath: false,
+}));
 
 // Import all routes
 const foodRouter = require("./routes/foodItem");

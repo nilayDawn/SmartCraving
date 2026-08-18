@@ -68,6 +68,12 @@ const foodSchema = new mongoose.Schema({
       },
     },
   ],
+  reviewSentiment: {
+    type: String,
+    enum: ["positive", "negative", "mixed"],
+  },
+  reviewSummaryBullets: [String],
+  reviewTopMentions: [String],
   ///////////ai///////////////////////
     aiDescription: {
     type: String,
@@ -97,5 +103,9 @@ const foodSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+// Performance Indexes for fast menu lookup and filtered queries
+foodSchema.index({ restaurant: 1, name: 1 });
+foodSchema.index({ ratings: -1 });
 
 module.exports = mongoose.model("FoodItem", foodSchema);

@@ -45,12 +45,12 @@ const buildFallbackSummary = (reviews = []) => {
   };
 };
 
-exports.analyzeReviewsWithAI = async (reviews) => {
+exports.analyzeReviewsWithAI = async (reviews, cacheScope = "reviews", subject = "restaurant") => {
   if (!reviews || !reviews.length) {
     return buildFallbackSummary([]);
   }
 
-  const cacheKey = computeReviewsHash(reviews);
+  const cacheKey = `${cacheScope}:${computeReviewsHash(reviews)}`;
   const cachedEntry = reviewSentimentCache.get(cacheKey);
 
   if (cachedEntry && Date.now() - cachedEntry.timestamp < CACHE_TTL_MS) {
@@ -66,7 +66,7 @@ exports.analyzeReviewsWithAI = async (reviews) => {
     const reviewTexts = reviews.map((review) => review.Comment).filter(Boolean);
 
     const prompt = `
-Analyze all restaurant reviews together.
+Analyze all ${subject} reviews together.
 
 Return a JSON object with this structure:
 
@@ -92,7 +92,7 @@ ${reviewTexts.join("\n")}
       const response = await axios.post(
         "https://api.groq.com/openai/v1/chat/completions",
         {
-          model: "llama-3.1-8b-instant",
+          model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.3,
           response_format: { type: "json_object" },

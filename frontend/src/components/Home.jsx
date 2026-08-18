@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   sortByRatings,
   sortByReviews,
@@ -11,6 +11,7 @@ import {
   getRestaurants,
 } from "../redux/actions/restaurantAction";
 import Restaurant from "./Restaurant";
+import Fooditem from "./Fooditem";
 import Loader from "./layout/Loader";
 import Message from "./Message";
 import { useDispatch, useSelector } from "react-redux";
@@ -25,6 +26,7 @@ const Home = () => {
     loading: restaurantsLoading,
     error: restaurantsError,
     restaurants,
+    foodItems,
     showVegOnly,
     creating,
     createError,
@@ -200,41 +202,59 @@ const Home = () => {
           )}
         </div>
 
-        {/* Restaurant Grid */}
+        {/* Search and restaurant results */}
         {restaurantsLoading ? (
           <Loader />
         ) : restaurantsError ? (
           <Message variant="danger">{restaurantsError}</Message>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {restaurants && restaurants.length > 0 ? (
-              restaurants.map((restaurant) =>
+          <>
+          {restaurants && restaurants.length > 0 && (
+            <>
+              {keyword && <h2 className="mb-4 font-display text-2xl font-extrabold text-slate-900">Matching Restaurants</h2>}
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {restaurants.map((restaurant) =>
                 !showVegOnly || restaurant.isVeg ? (
                   <Restaurant key={restaurant._id} restaurant={restaurant} />
                 ) : null
-              )
-            ) : (
-              <div className="col-span-full rounded-3xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
-                <p className="text-4xl mb-3">🔍</p>
-                <h3 className="text-xl font-bold text-slate-900">No restaurants match your filter</h3>
-                <p className="mt-1 text-sm text-slate-500">Try clearing your filters or searching for another keyword.</p>
-              </div>
-            )}
-
-            {/* Admin Add Card inside Grid */}
-            {isAuthenticated && user && user.role === "admin" && (
-              <div
-                className="group flex min-h-[340px] cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-emerald-300/80 bg-emerald-50/40 p-8 text-center transition-all duration-200 hover:border-emerald-500 hover:bg-emerald-50/80 hover:shadow-xl"
-                onClick={handleOpenCreate}
-              >
-                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-2xl font-bold text-white shadow-lg shadow-emerald-600/30 transition-transform duration-200 group-hover:scale-110">
-                  +
+              )}
+              {isAuthenticated && user && user.role === "admin" && (
+                <div
+                  className="group flex min-h-[340px] cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-emerald-300/80 bg-emerald-50/40 p-8 text-center transition-all duration-200 hover:border-emerald-500 hover:bg-emerald-50/80 hover:shadow-xl"
+                  onClick={handleOpenCreate}
+                >
+                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-2xl font-bold text-white shadow-lg shadow-emerald-600/30 transition-transform duration-200 group-hover:scale-110">+</div>
+                  <h4 className="font-display text-lg font-bold text-emerald-950">Add Partner Restaurant</h4>
+                  <p className="mt-1 text-xs font-medium text-emerald-700">List new kitchen, address, pure-veg status & location</p>
                 </div>
-                <h4 className="font-display text-lg font-bold text-emerald-950">Add Partner Restaurant</h4>
-                <p className="mt-1 text-xs font-medium text-emerald-700">List new kitchen, address, pure-veg status & location</p>
+              )}
               </div>
-            )}
-          </div>
+            </>
+          )}
+
+          {keyword && foodItems.length > 0 && (
+            <section className="mt-10">
+              <h2 className="mb-4 font-display text-2xl font-extrabold text-slate-900">Matching Food Items</h2>
+              <div className="grid gap-6 lg:grid-cols-2">
+                {foodItems.map((foodItem) => (
+                  <Fooditem
+                    key={foodItem._id}
+                    fooditem={foodItem}
+                    restaurant={foodItem.restaurant?._id || foodItem.restaurant}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {(!restaurants.length && !foodItems.length) && (
+            <div className="rounded-3xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
+              <p className="text-4xl mb-3">🔍</p>
+              <h3 className="text-xl font-bold text-slate-900">No results found</h3>
+              <p className="mt-1 text-sm text-slate-500">Try another restaurant or food item keyword.</p>
+            </div>
+          )}
+          </>
         )}
       </div>
 

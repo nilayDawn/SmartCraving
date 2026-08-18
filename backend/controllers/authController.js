@@ -13,11 +13,7 @@ const cloudinary = require("../config/cloudinary");
 // Register user
 exports.signup = catchAsyncErrors(async (req, res, next) => {
 
-  const { name, email, password, passwordConfirm, phoneNumber, role } = req.body;
-
-  if (!role || !["user", "admin", "restaurant-owner"].includes(role)) {
-    return next(new ErrorHandler("Please select a role (user or admin)", 400));
-  }
+  const { name, email, password, passwordConfirm, phoneNumber } = req.body;
 
   let avatar = {};
 
@@ -55,7 +51,9 @@ exports.signup = catchAsyncErrors(async (req, res, next) => {
     password,
     passwordConfirm,
     phoneNumber,
-    role: role || "user",
+    // Public registration can only create customer accounts. Privileged roles
+    // must be provisioned by a trusted admin or seed process.
+    role: "user",
     avatar,
   });
 
@@ -321,10 +319,14 @@ exports.resetPassword = catchAsyncErrors(async (req, res, next) => {
 
 // Logout
 exports.logout = catchAsyncErrors(async (req, res, next) => {
+  const isProduction = process.env.NODE_ENV?.toUpperCase() === "PRODUCTION";
 
   res.cookie("jwt", null, {
     expires: new Date(Date.now() - 1000),
     httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
   });
 
   res.status(200).json({

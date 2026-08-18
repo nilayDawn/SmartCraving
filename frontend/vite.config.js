@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import tailwindcss from '@tailwindcss/vite';
+import tailwindcss from "@tailwindcss/vite";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -8,10 +8,21 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        // target: "https://internship-b7.onrender.com",
         target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
+      },
+    },
+  },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom"],
+          redux: ["@reduxjs/toolkit", "react-redux"],
+          utils: ["axios", "qs"],
+        },
       },
     },
   },

@@ -38,11 +38,11 @@ export const createOrder = (session_id) => async(dispatch) =>{
 
 
 //payment
-export const payment = (items,restaurant) => async(dispatch) =>{
+export const payment = (items, restaurant, couponCode) => async(dispatch) =>{
     try{
 
         dispatch(paymentRequest());
-        const {data} = await api.post("/v1/payment/process",{items, restaurant},
+        const {data} = await api.post("/v1/payment/process",{items, restaurant, couponCode},
             {
                 headers:{
                     "Content-Type": "application/json"

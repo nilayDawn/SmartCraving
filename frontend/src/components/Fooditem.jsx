@@ -59,19 +59,28 @@ const Fooditem = ({ fooditem, restaurant }) => {
     }
   };
 
-  const addToCartHandler = () => {
+  const rawRest = restaurant || fooditem.restaurant;
+  const restaurantId = typeof rawRest === "object" && rawRest !== null ? rawRest._id : rawRest;
+
+  const addToCartHandler = async () => {
+    if (user?.role === "admin") return;
     if (!isAuthenticated) {
       return navigate("/users/login");
     }
-    dispatch(addItemToCart(fooditem._id, restaurant, quantity));
-    setShowButtons(true);
+    if (!restaurantId) {
+      alert("This food item is not linked to a restaurant.");
+      return;
+    }
+
+    const cart = await dispatch(addItemToCart(fooditem._id, restaurantId, quantity));
+    if (cart) setShowButtons(true);
   };
 
   return (
     <div className="group relative flex h-full gap-4 rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/30 hover:shadow-xl">
       {/* Food Image */}
       <Link
-        to={`/eats/food/${fooditem._id}?restaurant=${restaurant}`}
+        to={`/eats/food/${fooditem._id}${restaurantId ? `?restaurant=${restaurantId}` : ""}`}
         className="relative order-2 block h-28 w-28 shrink-0 overflow-hidden rounded-2xl sm:h-32 sm:w-32 bg-slate-100"
       >
         <img
@@ -95,7 +104,7 @@ const Fooditem = ({ fooditem, restaurant }) => {
         <div>
           <div className="flex items-start justify-between gap-2">
             <Link
-              to={`/eats/food/${fooditem._id}?restaurant=${restaurant}`}
+              to={`/eats/food/${fooditem._id}${restaurantId ? `?restaurant=${restaurantId}` : ""}`}
               className="font-display text-base font-bold text-slate-900 transition hover:text-emerald-600 line-clamp-1"
             >
               {fooditem.name}
@@ -138,7 +147,7 @@ const Fooditem = ({ fooditem, restaurant }) => {
                 + Add
               </button>
             )
-          ) : (
+          ) : user?.role !== "admin" ? (
             <div className="flex items-center rounded-xl bg-slate-100/80 p-1 border border-slate-200/80">
               <button
                 onClick={decreaseQty}
@@ -158,7 +167,7 @@ const Fooditem = ({ fooditem, restaurant }) => {
                 +
               </button>
             </div>
-          )}
+          ) : null}
 
           {/* Admin Delete Action */}
           {isAuthenticated && user?.role === "admin" && (

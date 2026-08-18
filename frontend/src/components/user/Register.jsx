@@ -13,10 +13,9 @@ const Register = () => {
     password: "",
     passwordConfirm: "",
     phoneNumber: "",
-    role: "",
   });
 
-  const { name, email, password, passwordConfirm, phoneNumber, role } = user;
+  const { name, email, password, passwordConfirm, phoneNumber } = user;
 
   const [avatar, setAvatar] = useState("");
   const [avatarPreview, setAvatarPreview] = useState("/images/images.png");
@@ -42,11 +41,6 @@ const Register = () => {
   const submitHandler = (e) => {
     e.preventDefault();
 
-    if (!role) {
-      toast.error("Please select a role (User or Admin)");
-      return;
-    }
-
     if (password !== passwordConfirm) {
       toast.error("Passwords do not match");
       return;
@@ -58,7 +52,6 @@ const Register = () => {
       password,
       passwordConfirm,
       phoneNumber,
-      role,
       avatar: avatar === "" ? "/images/images.png" : avatar,
     };
 
@@ -120,24 +113,6 @@ const Register = () => {
               ></input>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="role_field" className="flex items-center gap-1 font-bold text-slate-700">
-                <span>Select Role</span>
-                <span className="text-rose-500 font-extrabold">*</span>
-              </label>
-              <select
-                id="role_field"
-                className="form-control font-medium"
-                name="role"
-                value={role}
-                onChange={onChange}
-                required
-              >
-                <option value="">-- Choose Role * --</option>
-                <option value="user">👤 Customer (User)</option>
-                <option value="admin">👑 Administrator (Admin)</option>
-              </select>
-            </div>
             <div className="form-group">
               <label htmlFor="password_field">
                 Password <span className="text-rose-500 font-bold">*</span>

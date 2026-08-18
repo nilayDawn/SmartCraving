@@ -45,6 +45,23 @@ src/
 | `/users/signup` | Registration |
 | `/users/me` | Profile |
 | `/eats/orders/me/myOrders` | Current user orders |
+| `/admin/orders` | Admin restaurant order management and status updates |
+
+## Admin navigation and orders
+
+Administrators see `Restaurants` and `Orders` in the shared navigation. The admin-only `Admin Panel` header link and `Cart` option are intentionally removed. Customer accounts continue to see the normal cart and customer order history.
+
+The admin orders screen loads orders from `GET /api/v1/eats/orders/admin` and updates status with `PATCH /api/v1/eats/orders/:id/status`. Both endpoints require authentication and the `admin` role.
+
+Restaurant cards always render the AI Guest Insights control. Review and AI panels use card-local React state, so expanding one card does not expand another.
+
+The catalog search route is `/eats/stores/search/:keyword`. The backend searches restaurant names and addresses, then returns every food item whose name matches along with its associated restaurants.
+
+## On-demand AI review summaries
+
+The restaurant `AI Guest Insights Summary` button and food-item `AI Guest Review Summary` button analyze reviews only when clicked. The frontend sends the current comments to the backend, shows loading/error states, and renders sentiment, summary bullets, and top mentions.
+
+The backend caches results for one hour using the entity ID and review-content hash. Unchanged reviews reuse the cached result; newly added or edited reviews automatically receive a new analysis. Results are also persisted on the restaurant or food-item document.
 
 ## Styling conventions
 
@@ -63,3 +80,5 @@ npm run lint
 ```
 
 The production bundle may report a chunk-size warning; this does not fail the build.
+
+The current production build is approximately 636 KB minified JavaScript and 191 KB gzipped. This is deployable, but route-level lazy loading, dependency cleanup, and Rollup chunking should be considered as the application grows or if mobile load performance becomes a concern.

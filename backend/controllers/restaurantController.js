@@ -1,23 +1,69 @@
 const Restaurant = require("../models/restaurant");
+const FoodItem = require("../models/foodItem");
+const Menu = require("../models/menu");
 const ErrorHandler = require("../utils/errorHandler");
 const catchAsync = require("../middlewares/catchAsyncErrors");
 const APIFeatures = require("../utils/apiFeatures");
-const { analyzeReviewsWithAI } = require("../services/aiReviewAnalyzer");
 
 exports.getAllRestaurants = catchAsync(async (req, res, next) => {
-  const apiFeatures = new APIFeatures(Restaurant.find(), req.query)
-    .search()
-    .sort();
+  const keyword = req.query.keyword?.trim();
+  let query = Restaurant.find();
+  let foodItems = [];
+
+  if (keyword) {
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(escapedKeyword, "i");
+    const matchingFoodItems = await FoodItem.find({ name: pattern })
+      .populate("restaurant", "name address")
+      .sort({ name: 1 })
+      .lean();
+
+    const unlinkedFoodIds = matchingFoodItems
+      .filter((item) => !item.restaurant)
+      .map((item) => item._id);
+    if (unlinkedFoodIds.length) {
+      const menuLinks = await Menu.find({ "menu.items": { $in: unlinkedFoodIds } })
+        .populate("restaurant", "name address")
+        .select("restaurant menu");
+      const restaurantByFoodId = new Map();
+      menuLinks.forEach((menuDoc) => {
+        menuDoc.menu.forEach((category) => {
+          category.items.forEach((foodId) => {
+            if (!restaurantByFoodId.has(foodId.toString())) {
+              restaurantByFoodId.set(foodId.toString(), menuDoc.restaurant);
+            }
+          });
+        });
+      });
+      matchingFoodItems.forEach((item) => {
+        const rest = restaurantByFoodId.get(item._id.toString());
+        if (rest) item.restaurant = rest;
+      });
+    }
+
+    foodItems = matchingFoodItems;
+    const foodRestaurantIds = matchingFoodItems
+      .map((item) => item.restaurant?._id || item.restaurant)
+      .filter(Boolean);
+
+    query = query.find({
+      $or: [{ name: pattern }, { address: pattern }, { _id: { $in: foodRestaurantIds } }],
+    });
+  }
+
+  const apiFeatures = new APIFeatures(query, req.query).sort();
   const restaurants = await apiFeatures.query;
   res.status(200).json({
     status: "success",
     count: restaurants.length,
     restaurants: restaurants,
+    foodItems,
   });
 });
 
 exports.createRestaurant = catchAsync(async (req, res, next) => {
-  const body = { ...req.body };
+  const { name, address, isVeg, location, image, imageUrl, images: providedImages } = req.body;
+  const body = { name, address, isVeg, location, image, imageUrl, images: providedImages };
 
   // Process photo upload or image link
   let images = [];
@@ -62,18 +108,6 @@ exports.getRestaurant = catchAsync(async (req, res, next) => {
 
   if (!restaurant)
     return next(new ErrorHandler("No Restaurant found with that ID", 404));
-
-  // Backfill the cached AI summary for restaurants that already have reviews.
-  // This runs only once per restaurant, then future reads use the stored fields.
-  const hasUsefulSummary = restaurant.reviewSummaryBullets?.length > 0 &&
-    !restaurant.reviewSummaryBullets.includes("AI analysis failed");
-  if (restaurant.reviews?.length > 0 && !hasUsefulSummary) {
-    const aiData = await analyzeReviewsWithAI(restaurant.reviews);
-    restaurant.reviewSentiment = aiData.sentiment;
-    restaurant.reviewSummaryBullets = aiData.summaryBullets;
-    restaurant.reviewTopMentions = aiData.topMentions;
-    await restaurant.save();
-  }
 
   res.status(200).json({
     status: "success",

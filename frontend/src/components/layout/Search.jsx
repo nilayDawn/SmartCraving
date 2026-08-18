@@ -8,7 +8,7 @@ const Search = () => {
   const searchHandler = (e) => {
     e.preventDefault();
     if (keyword.trim()) {
-      navigate(`/eats/stores/search/${keyword}`);
+      navigate(`/eats/stores/search/${encodeURIComponent(keyword.trim())}`);
     } else {
       navigate("/restaurants");
     }

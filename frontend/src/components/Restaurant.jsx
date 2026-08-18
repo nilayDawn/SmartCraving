@@ -1,12 +1,21 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { deleteRestaurant } from "../redux/actions/restaurantAction";
 import api from "../utils/api";
 
 const Restaurant = ({ restaurant }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [showAI, setShowAI] = useState(false);
+  const [aiSummary, setAiSummary] = useState({
+    sentiment: restaurant.reviewSentiment,
+    summaryBullets: restaurant.reviewSummaryBullets || [],
+    topMentions: restaurant.reviewTopMentions || [],
+  });
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
   const [showReviews, setShowReviews] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviews, setReviews] = useState(restaurant.reviews || []);
@@ -43,6 +52,26 @@ const Restaurant = ({ restaurant }) => {
       setReviewError(error.response?.data?.message || "Unable to submit review.");
     } finally {
       setReviewSubmitting(false);
+    }
+  };
+
+  const loadAISummary = async () => {
+    if (showAI) {
+      setShowAI(false);
+      return;
+    }
+
+    setShowAI(true);
+    setAiLoading(true);
+    setAiError("");
+
+    try {
+      const { data } = await api.post(`/v1/ai/stores/${restaurant._id}/summary`);
+      setAiSummary(data.aiData);
+    } catch (error) {
+      setAiError(error.response?.data?.message || "Unable to generate the guest summary.");
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -182,18 +211,18 @@ const Restaurant = ({ restaurant }) => {
           )}
 
           {/* AI Sentiment Highlight Toggle */}
-          {restaurant.reviewSentiment && (
+          <>
             <button
               type="button"
               className="w-full flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-2.5 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100"
-              onClick={() => setShowAI(!showAI)}
+              onClick={isAuthenticated ? loadAISummary : () => navigate("/users/login")}
             >
               <span className="flex items-center gap-1.5">
                 <span className="text-emerald-600">✨</span> AI Guest Insights Summary
               </span>
               <span>{showAI ? "▲" : "▼"}</span>
             </button>
-          )}
+          </>
 
           {/* AI Sentiment Box */}
           {showAI && (
@@ -201,24 +230,28 @@ const Restaurant = ({ restaurant }) => {
               <div className="mb-2.5 flex items-center justify-between">
                 <span className="font-extrabold uppercase tracking-wider text-emerald-900 text-[10px]">Guest Sentiment</span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 font-bold text-white text-[11px]">
-                  😊 {restaurant.reviewSentiment}
+                  😊 {aiSummary.sentiment || "No summary yet"}
                 </span>
               </div>
 
-              {restaurant.reviewSummaryBullets && restaurant.reviewSummaryBullets.length > 0 && (
+              {aiLoading ? (
+                <p className="text-slate-600">Analyzing guest reviews...</p>
+              ) : aiError ? (
+                <p className="text-rose-600">{aiError}</p>
+              ) : aiSummary.summaryBullets.length > 0 ? (
                 <ul className="space-y-1.5 mb-3">
-                  {restaurant.reviewSummaryBullets.map((point, index) => (
+                  {aiSummary.summaryBullets.map((point, index) => (
                     <li key={index} className="flex items-start gap-1.5">
                       <span className="text-emerald-600 font-bold">✓</span>
                       <span>{point}</span>
                     </li>
                   ))}
                 </ul>
-              )}
+              ) : null}
 
-              {restaurant.reviewTopMentions && restaurant.reviewTopMentions.length > 0 && (
+              {!aiLoading && !aiError && aiSummary.topMentions.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-2 border-t border-emerald-100">
-                  {restaurant.reviewTopMentions.map((item, index) => (
+                  {aiSummary.topMentions.map((item, index) => (
                     <span
                       key={index}
                       className="rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800"
@@ -227,6 +260,10 @@ const Restaurant = ({ restaurant }) => {
                     </span>
                   ))}
                 </div>
+              )}
+
+              {!aiLoading && !aiError && !aiSummary.summaryBullets.length && (
+                <p className="text-slate-600">AI guest insights will appear after this restaurant receives reviews.</p>
               )}
             </div>
           )}

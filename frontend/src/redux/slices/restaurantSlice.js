@@ -3,6 +3,7 @@ import { getRestaurants, createRestaurant,deleteRestaurant, analyzeReviews } fro
 
 const initialState = {
     restaurants : [],
+    foodItems: [],
     count : 0,
     loading : false,
     error : null,
@@ -44,6 +45,7 @@ const restaurantSlice = createSlice({
         .addCase(getRestaurants.fulfilled,(state,action) =>{
             state.loading = false;
             state.restaurants = action.payload.restaurants;
+            state.foodItems = action.payload.foodItems;
             state.count = action.payload.count;
             state.pureVegRestaurantsCount = calculatePureVegCount(action.payload.restaurants, state.showVegOnly);
         })

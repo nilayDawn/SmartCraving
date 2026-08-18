@@ -20,7 +20,8 @@ exports.getAllFoodItems = catchAsync(async (req, res, next) => {
 
 // /v1/eats/stores/{store_id}/menus
 exports.createFoodItem = catchAsync(async (req, res, next) => {
-  const body = { ...req.body };
+  const { name, price, description, category, stock, restaurant, menu, image, imageUrl, images: providedImages } = req.body;
+  const body = { name, price, description, category, stock, restaurant, menu, image, imageUrl, images: providedImages };
   const cloudinary = require("../config/cloudinary");
 
   let images = [];
@@ -86,14 +87,22 @@ exports.getFoodItem = catchAsync(async (req, res, next) => {
   if (!foodItem)
     return next(new ErrorHandler("No foodItem found with that ID", 404));
 
-  if (!foodItem.restaurant) {
-    const menu = await Menu.findOne({ "menu.items": foodItem._id }).select("restaurant");
-    if (menu?.restaurant) foodItem.restaurant = menu.restaurant;
+  const foodItemObj = foodItem.toObject();
+
+  if (!foodItemObj.restaurant) {
+    const menu = await Menu.findOne({ "menu.items": foodItem._id })
+      .populate("restaurant", "name address")
+      .select("restaurant");
+    if (menu?.restaurant) {
+      foodItemObj.restaurant = menu.restaurant;
+      // Auto-heal missing restaurant reference in background DB record
+      await Fooditem.findByIdAndUpdate(foodItem._id, { restaurant: menu.restaurant._id });
+    }
   }
 
   res.status(200).json({
     status: "success",
-    data: foodItem,
+    data: foodItemObj,
   });
 });
 
@@ -120,9 +129,14 @@ exports.addFoodReview = catchAsync(async (req, res, next) => {
 });
 
 exports.updateFoodItem = catchAsync(async (req, res, next) => {
+  const allowedFields = ["name", "price", "description", "category", "stock", "restaurant", "menu", "images"];
+  const updates = Object.fromEntries(
+    allowedFields.filter((field) => Object.prototype.hasOwnProperty.call(req.body, field))
+      .map((field) => [field, req.body[field]]),
+  );
   const foodItem = await Fooditem.findByIdAndUpdate(
     req.params.foodId,
-    req.body,
+    updates,
     {
       new: true,
       runValidators: true,

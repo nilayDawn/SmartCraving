@@ -3,26 +3,80 @@ const dotenv = require("dotenv");
 dotenv.config({ path: "./config/config.env" });
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-console.log("KEY", process.env.STRIPE_SECRET_KEY);
+const Cart = require("../models/cartModel");
+const Coupon = require("../models/couponModel");
+const ErrorHandler = require("../utils/errorHandler");
+const { calculateCouponDiscount } = require("../utils/coupon");
 
 exports.processPayment = catchAsyncErrors(async (req, res, next) => {
-  console.log(req.body);
+  const { couponCode } = req.body;
+  const cart = await Cart.findOne({ user: req.user._id })
+    .populate({ path: "items.foodItem", select: "name price images" })
+    .populate({ path: "restaurant", select: "name" });
+
+  if (!cart || !cart.items.length) {
+    return next(new ErrorHandler("Your cart is empty", 400));
+  }
+
+  const subtotal = cart.items.reduce(
+    (sum, item) => {
+      if (!item.foodItem || !Number.isFinite(Number(item.foodItem.price))) {
+        throw new ErrorHandler("Cart contains an invalid food item", 400);
+      }
+      if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > item.foodItem.stock) {
+        throw new ErrorHandler(`Insufficient stock for ${item.foodItem.name}`, 400);
+      }
+      return sum + Number(item.foodItem.price) * item.quantity;
+    },
+    0,
+  );
+  let stripeDiscount;
+
+  if (couponCode) {
+    const coupon = await Coupon.findOne({
+      couponName: String(couponCode).trim().toUpperCase(),
+      expire: { $gt: new Date() },
+    });
+
+    if (!coupon || subtotal < coupon.minAmount) {
+      return next(new ErrorHandler("This coupon is invalid or cannot be used for this cart", 400));
+    }
+
+    const { discount } = calculateCouponDiscount(coupon, subtotal);
+
+    stripeDiscount = await stripe.coupons.create({
+      name: coupon.couponName,
+      amount_off: Math.round(discount * 100),
+      currency: "inr",
+      duration: "once",
+    });
+  }
+
+  const lineItems = cart.items.map((item) => {
+    if (!item.foodItem || !Number.isFinite(Number(item.foodItem.price)) || Number(item.foodItem.price) <= 0) {
+      throw new ErrorHandler("Cart contains an invalid food item", 400);
+    }
+
+    const imageUrl = item.foodItem.images?.[0]?.url;
+    const productData = { name: item.foodItem.name };
+    if (/^https?:\/\//i.test(imageUrl || "")) productData.images = [imageUrl];
+
+    return {
+      price_data: {
+        currency: "inr",
+        product_data: productData,
+        unit_amount: Math.round(Number(item.foodItem.price) * 100),
+      },
+      quantity: item.quantity,
+    };
+  });
+
   const session = await stripe.checkout.sessions.create({
     customer_email: req.user.email,
     phone_number_collection: {
       enabled: true,
     },
-    line_items: req.body.items.map((item) => ({
-      price_data: {
-        currency: "inr",
-        product_data: {
-          name: item.foodItem.name,
-          images: [item.foodItem.images[0].url],
-        },
-        unit_amount: item.foodItem.price * 100,
-      },
-      quantity: item.quantity,
-    })),
+    line_items: lineItems,
     mode: "payment",
     shipping_address_collection: {
       allowed_countries: ["US", "IN"],
@@ -49,6 +103,7 @@ exports.processPayment = catchAsyncErrors(async (req, res, next) => {
         },
       },
     ],
+    ...(stripeDiscount ? { discounts: [{ coupon: stripeDiscount.id }] } : {}),
     success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${process.env.FRONTEND_URL}/cart`,
   });
@@ -62,7 +117,6 @@ exports.processPayment = catchAsyncErrors(async (req, res, next) => {
 //       expand: ["customer"],
 //     }
 //   );
-// console.log(session);
 //   res.json({
 //     session,
 //   });

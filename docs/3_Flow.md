@@ -13,12 +13,12 @@ Landing page → Restaurant list/search → Restaurant menu → Food details
 2. The customer browses/searches with `GET /api/v1/eats/stores`.
 3. The customer opens a menu with `GET /api/v1/eats/stores/:storeId/menus`.
 4. The customer opens a food item with `GET /api/v1/eats/item/:foodId`.
-5. The cart action posts food item, restaurant, user, and quantity to `/api/v1/eats/cart/add-to-cart`.
+5. The cart action posts food item, restaurant, and quantity to `/api/v1/eats/cart/add-to-cart`; the backend derives the customer from the session.
 6. A different restaurant replaces the existing cart.
-7. Checkout posts items to `/api/v1/payment/process`.
+7. Checkout posts the selected coupon code and cart context to `/api/v1/payment/process`; the server reloads prices, stock, and coupon rules.
 8. Stripe collects payment and delivery data, then redirects to the frontend success URL.
 9. The frontend posts the Stripe session ID to `/api/v1/eats/orders/new`.
-10. The backend maps Stripe data to `deliveryInfo`/`paymentInfo`, creates the order, and deletes the cart.
+10. The backend verifies payment status and customer ownership, rechecks stock, creates or returns the idempotent order for that Stripe session, and deletes the cart.
 11. The customer can view orders through `/api/v1/eats/orders/me/myOrders`.
 
 ## 2. Authentication flow
@@ -26,7 +26,7 @@ Landing page → Restaurant list/search → Restaurant menu → Food details
 ```text
 Signup/Login → Validate credentials → Issue JWT
 → Cookie or Bearer token → Protected request
-→ protect middleware verifies token → req.user is available
+→ protect middleware verifies the HTTP-only session cookie → req.user is available
 ```
 
 Logout clears the authentication cookie. Password changes invalidate older JWTs through `passwordChangedAt`.
@@ -45,16 +45,20 @@ Normal catalogue order: create restaurant, create linked menu, create linked foo
 
 ### Restaurant review
 
-1. Client submits `name`, `rating`, and `Comment`.
+1. An authenticated customer submits `name`, `rating`, and `Comment`.
 2. Backend appends the review and recalculates count/average.
-3. Backend computes a content-hash fingerprint (`computeReviewsHash`) of the reviews array and checks the in-memory `reviewSentimentCache`.
-4. On **Cache Hit** (valid 1-hour TTL), cached sentiment (`sentiment`, `summaryBullets`, `topMentions`) is returned immediately.
-5. On **Cache Miss**, backend calls Groq analysis, caches the JSON response, and stores sentiment, summary bullets, and top mentions.
-6. If external AI fails, the system uses a smart local heuristic analyzer fallback to guarantee instant summary generation.
+3. The user clicks the restaurant or food-item AI summary button.
+4. The frontend requests the corresponding summary endpoint.
+5. Backend computes a content-hash fingerprint and uses an entity-scoped cache key (`restaurant:<id>:<hash>` or `food:<id>:<hash>`).
+6. On **Cache Hit** (valid 1-hour TTL), cached sentiment (`sentiment`, `summaryBullets`, `topMentions`) is returned immediately.
+7. On **Cache Miss**, backend sends the current comments to the AI service, caches the result, and persists the latest summary fields.
+8. If external AI fails, the system uses a local heuristic analyzer fallback.
 
 ### Food metadata
 
 The generate-only endpoint returns AI data for preview. The `/:foodId` endpoint saves `aiDescription`, `aiTags`, `aiAllergens`, `aiServes`, and `aiBestFor`.
+
+Review summaries are authenticated and rate-limited. Existing summaries are returned from cache/document data; administrators generate missing summaries. Restaurant requests use `POST /api/v1/ai/stores/:id/summary`; food-item requests use `POST /api/v1/ai/items/:id/summary`.
 
 ## 5. Password reset flow
 

@@ -48,7 +48,7 @@ Stores `user`, `restaurant`, `createdAt`, and `items`. Each item contains a requ
 
 ### Order
 
-Stores delivery information, user, restaurant, order-item snapshots, payment ID/status, item total, tax, delivery charge, final total, status, paid/delivered timestamps, and creation time.
+Stores delivery information, user, restaurant, order-item snapshots, payment ID/status, unique Stripe session ID, item total, tax, delivery charge, final total, status, paid/delivered timestamps, and creation time.
 
 Order items copy `name`, `quantity`, `image`, and `price`, while retaining the `fooditem` reference. This preserves historical display values if the catalogue changes.
 
@@ -65,4 +65,5 @@ Stores unique `couponName`, subtitle, minimum amount, maximum discount, percenta
 - Food ratings accepted by the food-review controller are 1 through 5.
 - Cart quantities must be at least 1 at schema level.
 - Orders must have a user, delivery info, order items, and final total.
+- Stripe session IDs are unique when present so payment-success retries return the existing order.
 - Payment/order creation should reject an empty or missing cart before production use.

@@ -1,14 +1,14 @@
-const catchAsync = require("../middlewares/catchAsyncErrors");
 const aiService = require("../services/ai.service")
 const FoodItem = require("../models/foodItem");
-const catchAsyncErrors = require("../middlewares/catchAsyncErrors");
+const catchAsync = require("../middlewares/catchAsyncErrors");
+const ErrorHandler = require("../utils/errorHandler");
 
 const Restaurant = require("../models/restaurant");
 const {analyzeReviewsWithAI}= require("../services/aiReviewAnalyzer")
 
 exports.generateFoodAI = catchAsync(async (req, res) => {
   const { name, category, spiceLevel, price } = req.body;
-  if (!name) {
+  if (typeof name !== "string" || !name.trim() || name.length > 100) {
     return res.status(400).json({
       success: false,
       message: "Please enter the Dish Name before generating AI description.",
@@ -72,9 +72,7 @@ exports.analyzeRestaurantReviews = catchAsync(async(req,res) =>{
             return res.status(400).json({message:"No reviews to analyze"})
           }
 
-          const aiData = await analyzeReviewsWithAI(restaurant.reviews);
-
-          console.log("AI DATA:", aiData);
+          const aiData = await analyzeReviewsWithAI(restaurant.reviews, `restaurant:${id}`, "restaurant");
 
           restaurant.reviewSentiment = aiData.sentiment;
           restaurant.reviewSummaryBullets = aiData.summaryBullets;
@@ -86,6 +84,78 @@ exports.analyzeRestaurantReviews = catchAsync(async(req,res) =>{
         res.status(500).json({message:error.message})
     }
 })
+
+exports.getRestaurantReviewSummary = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const restaurant = await Restaurant.findById(id);
+
+  if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+
+  if (restaurant.reviewSummaryBullets?.length || restaurant.reviewSentiment) {
+    return res.status(200).json({
+      success: true,
+      cached: true,
+      aiData: {
+        sentiment: restaurant.reviewSentiment,
+        summaryBullets: restaurant.reviewSummaryBullets || [],
+        topMentions: restaurant.reviewTopMentions || [],
+      },
+    });
+  }
+
+  if (req.user.role !== "admin") {
+    return next(new ErrorHandler("An administrator must generate the first review summary", 403));
+  }
+
+  const aiData = await analyzeReviewsWithAI(
+    restaurant.reviews,
+    `restaurant:${id}`,
+    "restaurant",
+  );
+
+  restaurant.reviewSentiment = aiData.sentiment;
+  restaurant.reviewSummaryBullets = aiData.summaryBullets;
+  restaurant.reviewTopMentions = aiData.topMentions;
+  await restaurant.save();
+
+  res.status(200).json({ success: true, aiData });
+});
+
+exports.getFoodReviewSummary = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const food = await FoodItem.findById(id);
+
+  if (!food) return res.status(404).json({ message: "Food item not found" });
+
+  if (food.reviewSummaryBullets?.length || food.reviewSentiment) {
+    return res.status(200).json({
+      success: true,
+      cached: true,
+      aiData: {
+        sentiment: food.reviewSentiment,
+        summaryBullets: food.reviewSummaryBullets || [],
+        topMentions: food.reviewTopMentions || [],
+      },
+    });
+  }
+
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "An administrator must generate the first review summary" });
+  }
+
+  const aiData = await analyzeReviewsWithAI(
+    food.reviews,
+    `food:${id}`,
+    "food item",
+  );
+
+  food.reviewSentiment = aiData.sentiment;
+  food.reviewSummaryBullets = aiData.summaryBullets;
+  food.reviewTopMentions = aiData.topMentions;
+  await food.save();
+
+  res.status(200).json({ success: true, aiData });
+});
 
 
 
@@ -123,27 +193,6 @@ exports.addReview = catchAsync(async (req, res) => {
 
   restaurant.ratings =
     totalRatings / restaurant.reviews.length;
-
-  // AI Review Analysis
-  try {
-    const aiData = await analyzeReviewsWithAI(
-      restaurant.reviews
-    );
-
-    restaurant.reviewSentiment =
-      aiData.sentiment;
-
-    restaurant.reviewSummaryBullets =
-      aiData.summaryBullets;
-
-    restaurant.reviewTopMentions =
-      aiData.topMentions;
-  } catch (error) {
-    console.log(
-      "AI Analysis Failed:",
-      error.message
-    );
-  }
 
   await restaurant.save();
 
