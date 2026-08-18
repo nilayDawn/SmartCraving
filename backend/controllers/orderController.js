@@ -77,7 +77,8 @@ exports.getSingleOrder = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("No Order found with this ID", 404));
   }
 
-  if (req.user.role !== "admin" && order.user.toString() !== req.user.id.toString()) {
+  const orderUserId = order.user?._id?.toString() || order.user?.toString();
+  if (req.user.role !== "admin" && orderUserId !== req.user.id.toString()) {
     return next(new ErrorHandler("You are not allowed to view this order", 403));
   }
 

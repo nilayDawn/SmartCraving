@@ -24,6 +24,7 @@ const defaultOrigins = process.env.NODE_ENV?.toUpperCase() === "PRODUCTION"
   : ["http://localhost:5173", "http://localhost:3000"];
 
 const vercelOrigins = [
+  "https://smart-craving-six.vercel.app",
   "https://smart-craving-git-main-nilay-dawn.vercel.app",
   "https://smart-craving-h6c3q6i1e-nilay-dawn.vercel.app",
 ];
