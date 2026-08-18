@@ -44,7 +44,7 @@ The safe pattern is to call `protect`, derive ownership from `req.user.id`, then
 - Credentialed CORS accepts only exact configured frontend origins.
 - JSON payloads are limited to 5 MB, URL-encoded payloads to 100 KB, and uploads to 5 MB.
 - Public signup always creates a customer role.
-- The frontend uses the HTTP-only cookie and does not persist JWTs in localStorage.
+- The frontend uses dual authentication strategies: HTTP-only cookies in same-domain environments and `Authorization: Bearer <jwt>` headers stored in `localStorage` to preserve user sessions across third-party site redirects (e.g. Stripe Checkout across Vercel and Render).
 - Admin writes use explicit field allowlists and Mongoose validation.
 
 ## Deployment checklist

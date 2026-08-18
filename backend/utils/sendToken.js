@@ -5,7 +5,7 @@ const sendToken = (user, statusCode, res) => {
   const token = user.getJWTToken();
 
   const cookieDays = Number(process.env.JWT_COOKIE_EXPIRES_DAYS || 7);
-  const isProduction = process.env.NODE_ENV?.toUpperCase() === "PRODUCTION";
+  const isProduction = process.env.NODE_ENV?.toLowerCase() === "production";
   const cookieOptions = {
     maxAge: cookieDays * 24 * 60 * 60 * 1000,
     httpOnly: true,

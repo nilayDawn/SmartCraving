@@ -24,8 +24,12 @@ export const login = (email, password) => async (dispatch) => {
       email,
       password,
     });
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+    }
     dispatch(loginSuccess(data.data.user));
   } catch (error) {
+    localStorage.removeItem("token");
     dispatch(
       loginFail(
         error.response?.data?.message ||
@@ -44,8 +48,12 @@ export const register = (userData) => async (dispatch) => {
     const { data } = await api.post("/v1/users/signup", userData, {
       headers: { "Content-Type": "application/json" },
     });
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+    }
     dispatch(loginSuccess(data.data.user));
   } catch (error) {
+    localStorage.removeItem("token");
     dispatch(
       loginFail(
         error.response?.data?.message ||
@@ -62,9 +70,12 @@ export const loadUser = () => async (dispatch) => {
     dispatch(loginRequest());
 
     const { data } = await api.get("/v1/users/me");
-
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+    }
     dispatch(loginSuccess(data.user));
   } catch (error) {
+    localStorage.removeItem("token");
     dispatch(
       loadUserFail(
         error.response?.data?.message || error.response?.data?.errMessage
@@ -90,8 +101,10 @@ export const updateProfile = (userData) => async (dispatch) => {
 export const logout = () => async (dispatch) => {
   try {
     await api.get("/v1/users/logout");
+    localStorage.removeItem("token");
     dispatch(logoutSuccess());
   } catch (error) {
+    localStorage.removeItem("token");
     dispatch(logoutFail(error.response?.data?.message));
   }
 };

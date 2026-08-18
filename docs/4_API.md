@@ -6,15 +6,15 @@ The frontend Axios client adds `/api` to its configured host, so calls such as `
 
 ## Authentication
 
-Protected routes accept the `jwt` cookie or an `Authorization: Bearer <jwt>` header. The frontend uses the HTTP-only cookie. Admin routes require a valid user with role `admin`.
+Protected routes accept either an HTTP-only `jwt` cookie or an `Authorization: Bearer <jwt>` header. The frontend Axios client automatically attaches `Bearer <jwt>` from `localStorage` on outbound requests to guarantee session retention across third-party site redirects (e.g., Stripe Checkout on cross-domain Vercel/Render deployments). Admin routes require a valid user with role `admin`.
 
 ## Users
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| POST | `/users/signup` | Public | Create a customer account and issue a session |
-| POST | `/users/login` | Public | Authenticate account |
-| GET | `/users/logout` | Public | Clear login cookie |
+| POST | `/users/signup` | Public | Create a customer account and issue a session token |
+| POST | `/users/login` | Public | Authenticate account and return session token |
+| GET | `/users/logout` | Public | Clear login cookie and user token |
 | GET | `/users/me` | User | Get current profile |
 | PUT | `/users/me/update` | User | Update name/email/avatar |
 | PUT | `/users/password/update` | User | Change password |
@@ -57,7 +57,7 @@ When `keyword` is supplied, search checks restaurant `name` and `address`, plus 
 | PATCH | `/eats/stores/:storeId/menus/:menuId/addItem` | Admin | Add item to category |
 | POST | `/eats/item` | Admin | Create food item |
 | GET | `/eats/items/:storeId` | Public | List restaurant food items |
-| GET | `/eats/item/:foodId` | Public | Get food item |
+| GET | `/eats/item/:foodId` | Public | Get food item (auto-heals missing restaurant links via Menu scan) |
 | PATCH | `/eats/item/:foodId` | Admin | Update food item |
 | DELETE | `/eats/item/:foodId` | Admin | Delete food item |
 | PUT | `/eats/item/:foodId/review` | User | Add food review |
@@ -80,10 +80,12 @@ Food creation accepts `imageUrl`; the controller converts it into the `images` a
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| POST | `/eats/cart/add-to-cart` | User | Add/increment item |
+| POST | `/eats/cart/add-to-cart` | User | Add or increment item in user cart |
 | POST | `/eats/cart/update-cart-item` | User | Set quantity |
 | DELETE | `/eats/cart/delete-cart-item` | User | Remove item |
 | GET | `/eats/cart/get-cart` | User | Get populated cart |
+
+`POST /eats/cart/add-to-cart` auto-resolves missing restaurant associations using Menu collection fallbacks, auto-heals the underlying FoodItem DB document, and appends items to the active cart array.
 
 Add/update example:
 
@@ -106,7 +108,7 @@ Stripe webhook: `POST /stripe/webhook` is called by Stripe with a signed raw req
 | POST | `/eats/orders/new` | User | Convert Stripe session into order |
 | GET | `/eats/orders/me/myOrders` | User | List current user orders |
 | GET | `/eats/orders/:id` | Owner/Admin | Get order details |
-| GET | `/eats/orders/admin` | Admin | List restaurant orders for administration |
+| GET | `/eats/orders/admin` | Admin | List restaurant orders with populated user, restaurant, and orderItems.fooditem details |
 | PATCH | `/eats/orders/:id/status` | Admin | Update order status and delivery timestamp |
 
 Payment body:
