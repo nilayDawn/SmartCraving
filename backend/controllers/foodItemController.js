@@ -90,13 +90,29 @@ exports.getFoodItem = catchAsync(async (req, res, next) => {
   const foodItemObj = foodItem.toObject();
 
   if (!foodItemObj.restaurant) {
-    const menu = await Menu.findOne({ "menu.items": foodItem._id })
-      .populate("restaurant", "name address")
-      .select("restaurant");
+    let menu = await Menu.findOne({ "menu.items": foodItem._id })
+      .populate("restaurant", "name address");
+
+    if (!menu) {
+      const allMenus = await Menu.find().populate("restaurant", "name address");
+      for (const m of allMenus) {
+        if (m.menu && Array.isArray(m.menu)) {
+          const found = m.menu.some((cat) =>
+            cat.items && cat.items.some((it) => it?.toString() === foodItem._id.toString())
+          );
+          if (found) {
+            menu = m;
+            break;
+          }
+        }
+      }
+    }
+
     if (menu?.restaurant) {
       foodItemObj.restaurant = menu.restaurant;
-      // Auto-heal missing restaurant reference in background DB record
-      await Fooditem.findByIdAndUpdate(foodItem._id, { restaurant: menu.restaurant._id });
+      // Auto-heal missing restaurant reference on the FoodItem record in DB
+      const targetRestId = menu.restaurant._id || menu.restaurant;
+      await Fooditem.findByIdAndUpdate(foodItem._id, { restaurant: targetRestId });
     }
   }
 

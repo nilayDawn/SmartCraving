@@ -3,9 +3,19 @@ const FoodItem = require("../models/foodItem");
 const Restaurant = require("../models/restaurant");
 const Menu = require("../models/menu");
 
+const getCleanId = (val) => {
+  if (!val) return "";
+  if (typeof val === "object") {
+    return (val._id || val).toString();
+  }
+  return val.toString();
+};
+
 async function addItemToCart(req, res) {
   const { foodItemId, restaurantId, quantity } = req.body;
   const userId = req.user._id;
+
+  const requestedRestaurantId = getCleanId(restaurantId);
 
   try {
     const foodItem = await FoodItem.findById(foodItemId);
@@ -13,20 +23,52 @@ async function addItemToCart(req, res) {
       return res.status(404).json({ message: "Food item not found" });
     }
 
-    let foodRestaurantId = foodItem.restaurant?.toString();
-    if (!foodRestaurantId) {
-      const menu = await Menu.findOne({ "menu.items": foodItem._id }).select("restaurant");
-      foodRestaurantId = menu?.restaurant?.toString();
+    // 1. Resolve actual restaurant ID from foodItem directly or via Menu relation
+    let actualRestaurantId = getCleanId(foodItem.restaurant);
+
+    if (!actualRestaurantId) {
+      let menu = await Menu.findOne({ "menu.items": foodItem._id }).select("restaurant");
+      if (!menu) {
+        const allMenus = await Menu.find().select("restaurant menu");
+        for (const m of allMenus) {
+          if (m.menu && Array.isArray(m.menu)) {
+            const found = m.menu.some((cat) =>
+              cat.items && cat.items.some((it) => getCleanId(it) === foodItemId.toString())
+            );
+            if (found) {
+              menu = m;
+              break;
+            }
+          }
+        }
+      }
+
+      if (menu?.restaurant) {
+        actualRestaurantId = getCleanId(menu.restaurant);
+        // Auto-heal missing restaurant reference on the FoodItem record
+        foodItem.restaurant = menu.restaurant;
+        await foodItem.save();
+      }
     }
-    if (!foodRestaurantId || foodRestaurantId !== restaurantId) {
+
+    // 2. Fall back to requestedRestaurantId if foodItem had no restaurant association anywhere
+    const targetRestaurantId = actualRestaurantId || requestedRestaurantId;
+
+    if (!targetRestaurantId) {
       return res.status(400).json({ message: "Food item does not belong to this restaurant" });
+    }
+
+    // If foodItem had no restaurant set in DB, auto-persist targetRestaurantId
+    if (!foodItem.restaurant) {
+      foodItem.restaurant = targetRestaurantId;
+      await foodItem.save();
     }
 
     if (!Number.isInteger(Number(quantity)) || Number(quantity) < 1) {
       return res.status(400).json({ message: "Quantity must be at least 1" });
     }
 
-    const restaurant = await Restaurant.findById(restaurantId);
+    const restaurant = await Restaurant.findById(targetRestaurantId);
     if (!restaurant) {
       return res.status(404).json({ message: "Restaurant not found" });
     }
@@ -34,28 +76,22 @@ async function addItemToCart(req, res) {
     let cart = await Cart.findOne({ user: userId });
 
     if (cart) {
-      if (cart.restaurant.toString() !== restaurantId) {
-        await Cart.deleteOne({ _id: cart._id });
-        cart = new Cart({
-          user: userId,
-          restaurant: restaurantId,
-          items: [{ foodItem: foodItemId, quantity }],
-        });
+      if (targetRestaurantId) {
+        cart.restaurant = targetRestaurantId;
+      }
+      const itemIndex = cart.items.findIndex(
+        (item) => getCleanId(item.foodItem) === foodItemId.toString()
+      );
+      if (itemIndex > -1) {
+        cart.items[itemIndex].quantity += Number(quantity);
       } else {
-        const itemIndex = cart.items.findIndex(
-          (item) => item.foodItem.toString() === foodItemId
-        );
-        if (itemIndex > -1) {
-          cart.items[itemIndex].quantity += quantity;
-        } else {
-          cart.items.push({ foodItem: foodItemId, quantity });
-        }
+        cart.items.push({ foodItem: foodItemId, quantity: Number(quantity) });
       }
     } else {
       cart = new Cart({
         user: userId,
-        restaurant: restaurantId,
-        items: [{ foodItem: foodItemId, quantity }],
+        restaurant: targetRestaurantId,
+        items: [{ foodItem: foodItemId, quantity: Number(quantity) }],
       });
     }
 
@@ -74,7 +110,7 @@ async function addItemToCart(req, res) {
 
     res.status(200).json({ message: "Cart updated", cart: updatedCart });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 }
 

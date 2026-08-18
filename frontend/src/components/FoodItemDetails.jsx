@@ -94,16 +94,10 @@ const FoodItemDetails = () => {
     if (!user) return navigate("/users/login");
     const rawRest = food?.restaurant || searchParams.get("restaurant");
     const restaurantId = typeof rawRest === "object" && rawRest !== null ? rawRest._id : rawRest;
-    if (!restaurantId) {
-      setCartError("This food item is not linked to a restaurant.");
-      return;
-    }
 
     setCartError("");
-    const cart = await dispatch(addItemToCart(food._id, restaurantId, quantity));
-    if (cart) {
-      navigate("/cart");
-    } else {
+    const cart = await dispatch(addItemToCart(food._id, restaurantId || null, quantity));
+    if (!cart) {
       setCartError("Unable to add this item to your cart. Please try again.");
     }
   };

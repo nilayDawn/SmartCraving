@@ -100,27 +100,78 @@ const AdminOrders = () => {
                 <th className="px-5 py-4">Order</th>
                 <th className="px-5 py-4">Restaurant</th>
                 <th className="px-5 py-4">Customer</th>
+                <th className="px-5 py-4">Ordered Items</th>
                 <th className="px-5 py-4">Total</th>
                 <th className="px-5 py-4">Status & message</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-                {orders.map((order) => (
-                  <tr key={order._id} className="align-top">
+              {orders.map((order) => (
+                <tr key={order._id} className="align-top">
                   <td className="px-5 py-4 font-semibold text-slate-900">
-                    <span className="block">#{order._id.slice(-6).toUpperCase()}</span>
+                    <span className="block font-mono font-bold">#{order._id.slice(-6).toUpperCase()}</span>
                     <span className="mt-1 block text-xs font-normal text-slate-500">
                       {new Date(order.createdAt).toLocaleString()}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-slate-700">{order.restaurant?.name || "Unknown restaurant"}</td>
+                  <td className="px-5 py-4 font-medium text-slate-800">{order.restaurant?.name || "Unknown restaurant"}</td>
                   <td className="px-5 py-4 text-slate-700">
-                    <span className="block">{order.user?.name || "Unknown customer"}</span>
+                    <span className="block font-semibold text-slate-900">{order.user?.name || "Unknown customer"}</span>
                     <span className="text-xs text-slate-500">{order.user?.email}</span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="space-y-2.5 max-w-xs">
+                      {order.orderItems && order.orderItems.length > 0 ? (
+                        order.orderItems.map((item, idx) => {
+                          const stockCount = item.fooditem?.stock;
+                          const hasStock = typeof stockCount === "number";
+                          const itemImg = item.image || item.fooditem?.images?.[0]?.url;
+
+                          return (
+                            <div key={item._id || idx} className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/60 p-2">
+                              {itemImg ? (
+                                <img
+                                  src={itemImg}
+                                  alt={item.name}
+                                  className="h-10 w-10 shrink-0 rounded-lg object-cover border border-slate-200"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400";
+                                  }}
+                                />
+                              ) : (
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 font-bold text-xs">
+                                  🍲
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-bold text-slate-900">{item.name}</p>
+                                <div className="flex items-center justify-between gap-1 text-[11px] text-slate-500 mt-0.5">
+                                  <span>
+                                    {item.quantity}x @ ₹{item.price}
+                                  </span>
+                                  {hasStock && (
+                                    <span
+                                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-extrabold ${
+                                        stockCount > 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-700"
+                                      }`}
+                                    >
+                                      {stockCount > 0 ? `${stockCount} in stock` : "Out of stock"}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">No item details</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-4 font-bold text-slate-900">₹{Number(order.finalTotal || 0).toFixed(2)}</td>
                   <td className="px-5 py-4">
-                    <div className="min-w-[250px] max-w-[310px] space-y-2">
+                    <div className="min-w-[230px] max-w-[280px] space-y-2">
                       {TERMINAL_STATUSES.includes(order.orderStatus) ? (
                         <div className="space-y-2">
                           <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">

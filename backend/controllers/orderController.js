@@ -108,6 +108,7 @@ exports.allOrders = catchAsyncErrors(async (req, res, next) => {
   const orders = await Order.find()
     .populate("user", "name email")
     .populate("restaurant", "name")
+    .populate("orderItems.fooditem", "name stock images price")
     .sort({ createdAt: -1 });
 
   let totalAmount = 0;
@@ -160,7 +161,8 @@ exports.updateOrderStatus = catchAsyncErrors(async (req, res, next) => {
     { new: true, runValidators: true },
   )
     .populate("user", "name email")
-    .populate("restaurant", "name");
+    .populate("restaurant", "name")
+    .populate("orderItems.fooditem", "name stock images price");
 
   if (!order) return next(new ErrorHandler("No Order found with this ID", 404));
   res.status(200).json({ success: true, order });
