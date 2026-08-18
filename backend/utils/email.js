@@ -2,10 +2,12 @@ const nodemailer = require("nodemailer");
 const pug = require("pug");
 const htmlToText = require("html-to-text");
 
+const port = Number(process.env.EMAIL_PORT || 465);
+
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || "smtp.gmail.com",
-  port: Number(process.env.EMAIL_PORT || 587),
-  secure: Number(process.env.EMAIL_PORT || 587) === 465,
+  port: port,
+  secure: port === 465,
   connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 15000,
