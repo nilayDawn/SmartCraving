@@ -1,162 +1,120 @@
-# SmartCraving API Reference
+# 🔌 SmartCraving REST API Reference
 
-Base URL: `http://localhost:4000/api/v1`
+[![API Base](https://img.shields.io/badge/Base_URL-%2Fapi%2Fv1-blue?style=flat-square)](#)
+[![Format](https://img.shields.io/badge/Format-JSON-brightgreen?style=flat-square)](#)
 
-The frontend Axios client adds `/api` to its configured host, so calls such as `/v1/users/login` resolve to this base URL. Browser requests require credentials for cookie authentication.
+All endpoints accept and return `application/json` unless otherwise noted. All requests must pass through the security middleware stack (Helmet, MongoSanitize, HPP, and Rate Limiters).
 
-## Authentication
+---
 
-Protected routes accept either an HTTP-only `jwt` cookie or an `Authorization: Bearer <jwt>` header. The frontend Axios client automatically attaches `Bearer <jwt>` from `localStorage` on outbound requests to guarantee session retention across third-party site redirects (e.g., Stripe Checkout on cross-domain Vercel/Render deployments). Admin routes require a valid user with role `admin`.
+## Standard JSON Response Envelopes
 
-## Users
-
-| Method | Path | Auth | Purpose |
-| --- | --- | --- | --- |
-| POST | `/users/signup` | Public | Create a customer account and issue a session token |
-| POST | `/users/login` | Public | Authenticate account and return session token |
-| GET | `/users/logout` | Public | Clear login cookie and user token |
-| GET | `/users/me` | User | Get current profile |
-| PUT | `/users/me/update` | User | Update name/email/avatar |
-| PUT | `/users/password/update` | User | Change password |
-| POST | `/users/forgetPassword` | Public | Send reset email |
-| PATCH | `/users/resetPassword/:token` | Public | Set new password |
-
-Signup body:
-
+### Success Envelope
 ```json
 {
-  "name": "Asha",
-  "email": "asha@example.com",
-  "password": "secret123",
-  "passwordConfirm": "secret123",
-  "phoneNumber": "9876543210"
+  "status": "success",
+  "data": { ... }
 }
 ```
 
-## Restaurants
-
-| Method | Path | Auth | Purpose |
-| --- | --- | --- | --- |
-| GET | `/eats/stores?keyword=...` | Public | List/search restaurants |
-| POST | `/eats/stores` | Admin | Create restaurant |
-| GET | `/eats/stores/:storeId` | Public | Get restaurant details |
-| DELETE | `/eats/stores/:storeId` | Admin | Delete restaurant |
-| GET | `/eats/restaurants/count` | Public | Get restaurant count |
-
-Restaurant creation requires `name`, `address`, and GeoJSON `location` (`type: "Point"`, `coordinates: [longitude, latitude]`).
-
-When `keyword` is supplied, search checks restaurant `name` and `address`, plus `FoodItem.name`; a food match returns its associated restaurant.
-
-## Menus and food items
-
-| Method | Path | Auth | Purpose |
-| --- | --- | --- | --- |
-| GET | `/eats/stores/:storeId/menus` | Public | List restaurant menus with items |
-| POST | `/eats/stores/:storeId/menus` | Admin | Create menu |
-| DELETE | `/eats/stores/:storeId/menus/:menuId` | Admin | Delete menu |
-| PATCH | `/eats/stores/:storeId/menus/:menuId/addItem` | Admin | Add item to category |
-| POST | `/eats/item` | Admin | Create food item |
-| GET | `/eats/items/:storeId` | Public | List restaurant food items |
-| GET | `/eats/item/:foodId` | Public | Get food item (auto-heals missing restaurant links via Menu scan) |
-| PATCH | `/eats/item/:foodId` | Admin | Update food item |
-| DELETE | `/eats/item/:foodId` | Admin | Delete food item |
-| PUT | `/eats/item/:foodId/review` | User | Add food review |
-
-## Reviews and AI summaries
-
-| Method | Path | Auth | Purpose |
-| --- | --- | --- | --- |
-| PUT | `/ai/stores/:id/review` | User | Add restaurant review |
-| DELETE | `/ai/stores/:id/reviews/:reviewId` | Admin | Delete restaurant review |
-| DELETE | `/ai/items/:id/reviews/:reviewId` | Admin | Delete food-item review |
-| POST | `/ai/stores/:id/summary` | Authenticated user | Get or generate restaurant review summary |
-| POST | `/ai/items/:id/summary` | Authenticated user | Get or generate food-item review summary |
-
-AI summary endpoints first return a persisted summary when the review set is unchanged. On a cache miss, the content-hash result is reused for one hour in memory and then saved on the restaurant or food-item document. Adding or deleting a review invalidates the saved summary.
-
-Food creation accepts `imageUrl`; the controller converts it into the `images` array format.
-
-## Cart
-
-| Method | Path | Auth | Purpose |
-| --- | --- | --- | --- |
-| POST | `/eats/cart/add-to-cart` | User | Add or increment item in user cart |
-| POST | `/eats/cart/update-cart-item` | User | Set quantity |
-| DELETE | `/eats/cart/delete-cart-item` | User | Remove item |
-| GET | `/eats/cart/get-cart` | User | Get populated cart |
-
-`POST /eats/cart/add-to-cart` auto-resolves missing restaurant associations using Menu collection fallbacks, auto-heals the underlying FoodItem DB document, and appends items to the active cart array.
-
-Add/update example:
-
+### Operational Error Envelope
 ```json
 {
-  "foodItemId": "FOOD_ID",
-  "restaurantId": "RESTAURANT_ID",
-  "quantity": 2
+  "status": "fail",
+  "message": "Human readable error description",
+  "errMessage": "Human readable error description"
 }
 ```
 
-## Payments and orders
+---
 
-Stripe webhook: `POST /stripe/webhook` is called by Stripe with a signed raw request body. Configure `STRIPE_WEBHOOK_SECRET`. Paid checkout completion events finalize the order even if the customer closes the browser; duplicate webhook deliveries are safe because the Stripe session ID is unique.
+## 1. Authentication & User Management (`/api/v1/users`)
 
-| Method | Path | Auth | Purpose |
-| --- | --- | --- | --- |
-| POST | `/payment/process` | User | Create Stripe Checkout Session |
-| GET | `/stripeapi` | User | Return publishable Stripe key |
-| POST | `/eats/orders/new` | User | Convert Stripe session into order |
-| GET | `/eats/orders/me/myOrders` | User | List current user orders |
-| GET | `/eats/orders/:id` | Owner/Admin | Get order details |
-| GET | `/eats/orders/admin` | Admin | List restaurant orders with populated user, restaurant, and orderItems.fooditem details |
-| PATCH | `/eats/orders/:id/status` | Admin | Update order status and delivery timestamp |
+| Method | Endpoint | Auth | Rate Limit | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `POST` | `/signup` | Public | 15 / 15m | Register customer account & receive JWT session. |
+| `POST` | `/login` | Public | 15 / 15m | Authenticate credentials & receive JWT session. |
+| `GET` | `/logout` | Public | — | Clears HTTP-Only authentication cookie. |
+| `POST` | `/forgetPassword` | Public | 5 / 15m | Request password recovery email. |
+| `PATCH`| `/resetPassword/:token` | Public | 10 / 15m | Set new password using email recovery token. |
+| `GET` | `/me` | User | — | Get authenticated profile data. |
+| `PUT` | `/me/update` | User | — | Update name, email, or avatar. |
+| `PUT` | `/password/update` | User | — | Update account password. |
 
-Payment body:
+---
 
-```json
-{
-  "items": [{
-    "quantity": 1,
-    "foodItem": {
-      "name": "Paneer Tikka",
-      "price": 250,
-      "images": [{ "url": "https://example.com/item.jpg" }]
-    }
-  }],
-  "restaurant": "RESTAURANT_ID",
-  "couponCode": "SAVE20"
-}
-```
+## 2. Restaurant Catalogue & Menus (`/api/v1/eats`)
 
-Order creation body: `{ "session_id": "cs_test_..." }`.
+| Method | Endpoint | Auth | Caching | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `GET` | `/restaurants/count` | Public | 10m TTL | Total count of registered restaurants. |
+| `GET` | `/stores` | Public | 5m TTL | Search and list restaurants (filters: search, sort). |
+| `POST` | `/stores` | Admin | Purge Cache | Register a new restaurant. |
+| `GET` | `/stores/:storeId` | Public | 5m TTL | Fetch restaurant details by ObjectId. |
+| `DELETE`| `/stores/:storeId` | Admin | Purge Cache | Delete restaurant and linked menus. |
+| `GET` | `/stores/:storeId/menus` | Public | 5m TTL | Fetch menu categories and items for a restaurant. |
+| `POST` | `/stores/:storeId/menus` | Admin | Purge Cache | Create a new menu for a restaurant. |
+| `PATCH`| `/stores/:storeId/menus/:menuId/addItem` | Admin | Purge Cache | Add food item ID to a menu category. |
+| `DELETE`| `/stores/:storeId/menus/:menuId` | Admin | Purge Cache | Delete a menu. |
+| `POST` | `/item` | Admin | Purge Cache | Create a new food dish. |
+| `GET` | `/items/:storeId` | Public | 5m TTL | Fetch all dishes belonging to a restaurant. |
+| `GET` | `/item/:foodId` | Public | 5m TTL | Fetch food item details and reviews. |
+| `PATCH`| `/item/:foodId` | Admin | Purge Cache | Update food dish details or inventory stock. |
+| `DELETE`| `/item/:foodId` | Admin | Purge Cache | Delete food dish. |
+| `PUT` | `/item/:foodId/review` | User | Purge Cache | Submit a customer rating and review. |
 
-## Coupons
+---
 
-| Method | Path | Auth | Purpose |
-| --- | --- | --- | --- |
-| POST | `/coupon` | Admin | Create coupon |
-| GET | `/coupon` | Public | List coupons |
-| PATCH | `/coupon/:couponId` | Admin | Update coupon |
-| DELETE | `/coupon/:couponId` | Admin | Delete coupon |
-| POST | `/coupon/validate` | User | Validate and calculate offer result |
+## 3. Cart Management (`/api/v1/eats/cart`)
 
-Coupon validation checks expiry, minimum order amount, percentage discount, and maximum discount. The same server-side calculation is applied again when creating Stripe Checkout.
+| Method | Endpoint | Auth | Rate Limit | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `POST` | `/add-to-cart` | User | 100 / 10m | Add dish portion to cart (enforces single-restaurant rule). |
+| `POST` | `/update-cart-item` | User | 100 / 10m | Increment/decrement item quantity ($1 \le \text{qty} \le 50$). |
+| `DELETE`| `/delete-cart-item` | User | — | Remove food item from cart. |
+| `GET` | `/get-cart` | User | — | Fetch current user cart items and pricing. |
 
-## AI and reviews
+---
 
-| Method | Path | Auth | Purpose |
-| --- | --- | --- | --- |
-| POST | `/ai/generate-food-ai` | Admin | Generate food metadata only |
-| POST | `/ai/generate-food-ai/:foodId` | Admin | Generate and save metadata |
-| PUT | `/ai/admin/restaurants/:id/analyze` | Admin | Analyze restaurant reviews |
-| PUT | `/ai/stores/:id/review` | User | Add restaurant review |
-| POST | `/ai/stores/:id/summary` | Authenticated user | Read cached or allowed summary |
-| POST | `/ai/items/:id/summary` | Authenticated user | Read cached or allowed summary |
+## 4. Orders & Fulfillment (`/api/v1/eats/orders`)
 
-Food AI requires `name`, `category`, `spiceLevel`, and `price`.
+| Method | Endpoint | Auth | Rate Limit | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `POST` | `/new` | User | 15 / 10m | Finalize and create verified order post-payment. |
+| `GET` | `/me/myOrders` | User | — | Fetch order history for authenticated customer. |
+| `GET` | `/:id` | User | — | Fetch single order details by ObjectId. |
+| `GET` | `/admin` | Admin | — | List all system orders across all restaurants. |
+| `PATCH`| `/:id/status` | Admin | — | Update order status (`Processing`, `Dispatched`, `Delivered`, `Cancelled`). |
 
-AI routes are rate-limited. Existing summaries are returned from cached/document data; missing summaries are generated by administrators and saved to the related document.
+---
 
-## Error handling
+## 5. Payments (`/api/v1`)
 
-Typical statuses are `200`/`201` success, `204` delete, `400` invalid input, `401` authentication failure, `404` missing resources, and `500` server/integration failure. Existing controllers use both `message` and `errMessage`; callers should display whichever exists.
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :---: | :--- |
+| `POST` | `/payment/process` | User | Validates cart items, applies discounts, creates Stripe Checkout session. |
+| `GET` | `/stripeapi` | User | Returns Stripe publishable key to frontend client. |
+| `POST` | `/stripe/webhook` | Stripe | Webhook listener verifying Stripe cryptographic signature. |
+
+---
+
+## 6. Promotions & Coupons (`/api/v1/coupon`)
+
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/` | Public | Fetch all currently active coupons (cached 5m). |
+| `POST` | `/` | Admin | Create a new promotional discount coupon. |
+| `PATCH`| `/:couponId` | Admin | Update coupon rules or expiration date. |
+| `DELETE`| `/:couponId` | Admin | Delete a coupon. |
+| `POST` | `/validate` | User | Validates coupon code and returns calculated discount. |
+
+---
+
+## 7. AI Restaurant Intelligence (`/api/v1/ai`)
+
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :---: | :--- |
+| `POST` | `/stores/:id/summary` | User | Returns cached or generated AI guest sentiment analysis. |
+| `POST` | `/items/:id/summary` | User | Returns cached or generated AI dish sentiment summary. |
+| `POST` | `/generate-food` | Admin | Generates dish descriptions, allergens, and dietary tags using Llama-3. |
+| `PUT` | `/admin/restaurants/:id/analyze` | Admin | Triggers AI batch review sentiment analysis for a restaurant. |

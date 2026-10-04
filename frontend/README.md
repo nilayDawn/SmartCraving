@@ -12,11 +12,12 @@ npm install
 npm run dev
 ```
 
-The Vite development server runs on `http://localhost:5173` by default. API requests use `VITE_API_URL` when it is defined; otherwise they target `http://localhost:4000/api`.
+The Vite development server runs on `http://localhost:5173` by default. API requests resolve dynamically using `VITE_API_URL` (or `VITE_BACKEND_URL`). If not set, requests default to `/api`, which is routed to the backend via Vite's proxy during local development or via reverse proxy in production.
 
-Optional frontend environment file:
+Frontend environment configuration (`.env`):
 
 ```env
+# Point to your local or deployed backend instance
 VITE_API_URL=http://localhost:4000
 ```
 

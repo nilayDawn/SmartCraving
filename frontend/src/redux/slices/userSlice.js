@@ -1,58 +1,65 @@
 import {createSlice} from "@reduxjs/toolkit"
 
-//create initialstate
-const initialState ={
-    user:null,
-    // The app restores the current session on startup. Keep protected and
-    // guest-only routes from rendering before that check finishes.
-    loading:true,
-    isAuthenticated:false,
-    error:null,
-    isUpdated:false,
-    message: null,
-    success:null
-}
-
+const initialState = {
+  user: null,
+  // initialLoading is true only during the initial session check on app startup.
+  // It allows route guards (GuestRoute, ProtectedRoute) to wait for loadUser()
+  // without unmounting forms during active user actions (login, register).
+  initialLoading: true,
+  loading: false,
+  isAuthenticated: false,
+  error: null,
+  isUpdated: false,
+  message: null,
+  success: null,
+};
 
 const userSlice = createSlice({
-    name: "user",
-    initialState,
-    reducers:{
-        //Login/register/load
-        loginRequest:(state) =>{
-            state.loading= true;
-            state.isAuthenticated= false
-        },
-        loginSuccess :(state,action) =>{
-            state.loading =false;
-            state.isAuthenticated =true
-            state.user = action.payload // store user data
-        },
-        loginFail: (state,action) =>{
-            state.loading =false;
-            state.isAuthenticated =false
-            state.user = null
-            state.error = action.payload
-        },
+  name: "user",
+  initialState,
+  reducers: {
+    // Login / register / load
+    loginRequest: (state) => {
+      state.loading = true;
+      state.isAuthenticated = false;
+    },
+    loginSuccess: (state, action) => {
+      state.loading = false;
+      state.initialLoading = false;
+      state.isAuthenticated = true;
+      state.user = action.payload;
+      state.error = null;
+    },
+    loginFail: (state, action) => {
+      state.loading = false;
+      state.initialLoading = false;
+      state.isAuthenticated = false;
+      state.user = null;
+      state.error = action.payload;
+    },
 
-        //LOAD user fail (not logged in — this is normal, not an error to display)
-        loadUserFail:(state,action) =>{
-            state.loading =false;
-            state.isAuthenticated =false
-            state.user = null
-        },
+    // LOAD user fail (not logged in — normal, not an error to display)
+    loadUserFail: (state) => {
+      state.loading = false;
+      state.initialLoading = false;
+      state.isAuthenticated = false;
+      state.user = null;
+    },
 
-        //Logout
-        logoutSuccess: (state)=>{
-             state.loading =false;
-            state.isAuthenticated =false
-            state.user = null
-        },
+    // Logout
+    logoutSuccess: (state) => {
+      state.loading = false;
+      state.initialLoading = false;
+      state.isAuthenticated = false;
+      state.user = null;
+      state.error = null;
+    },
 
-        //Logout fail
-        logoutFail:(state,action)=>{
-            state.error = action.payload
-        },
+    // Logout fail
+    logoutFail: (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    },
         
         //Update Profile/ password
         updateRequest:(state) =>{

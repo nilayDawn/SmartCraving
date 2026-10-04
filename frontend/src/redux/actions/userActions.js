@@ -1,6 +1,5 @@
-//Dispatch => Call API =>Update state based on success or failure
-
-import api from "../../utils/api";
+import api from "../../api/client";
+import { ENDPOINTS } from "../../api/endpoints";
 import {
   loginRequest,
   loginSuccess,
@@ -11,96 +10,95 @@ import {
   updateRequest,
   updateSuccess,
   updateFail,
-  updateReset,
-  clearErrors,
 } from "../slices/userSlice";
 
 // LOGIN
-
 export const login = (email, password) => async (dispatch) => {
   try {
     dispatch(loginRequest());
-    const { data } = await api.post("/v1/users/login", {
+    const { data } = await api.post(ENDPOINTS.AUTH.LOGIN, {
       email,
       password,
     });
     if (data.token) {
       localStorage.setItem("token", data.token);
     }
-    dispatch(loginSuccess(data.data.user));
+    const user = data.data?.user || data.user;
+    dispatch(loginSuccess(user));
   } catch (error) {
     localStorage.removeItem("token");
     dispatch(
       loginFail(
         error.response?.data?.message ||
           error.response?.data?.errMessage ||
-          "Login failed. Please try again."
-      )
+          "Login failed. Please try again.",
+      ),
     );
   }
 };
 
-//Register
+// Register
 export const register = (userData) => async (dispatch) => {
   try {
     dispatch(loginRequest());
 
-    const { data } = await api.post("/v1/users/signup", userData, {
+    const { data } = await api.post(ENDPOINTS.AUTH.SIGNUP, userData, {
       headers: { "Content-Type": "application/json" },
     });
     if (data.token) {
       localStorage.setItem("token", data.token);
     }
-    dispatch(loginSuccess(data.data.user));
+    const user = data.data?.user || data.user;
+    dispatch(loginSuccess(user));
   } catch (error) {
     localStorage.removeItem("token");
     dispatch(
       loginFail(
         error.response?.data?.message ||
           error.response?.data?.errMessage ||
-          "Registration failed."
-      )
+          "Registration failed.",
+      ),
     );
   }
 };
 
-//load user
+// Load User
 export const loadUser = () => async (dispatch) => {
   try {
     dispatch(loginRequest());
 
-    const { data } = await api.get("/v1/users/me");
+    const { data } = await api.get(ENDPOINTS.AUTH.ME);
     if (data.token) {
       localStorage.setItem("token", data.token);
     }
-    dispatch(loginSuccess(data.user));
+    const user = data.user || data.data?.user;
+    dispatch(loginSuccess(user));
   } catch (error) {
     localStorage.removeItem("token");
     dispatch(
       loadUserFail(
-        error.response?.data?.message || error.response?.data?.errMessage
-      )
+        error.response?.data?.message || error.response?.data?.errMessage,
+      ),
     );
   }
 };
 
-//update profile
-
+// Update Profile
 export const updateProfile = (userData) => async (dispatch) => {
   try {
     dispatch(updateRequest());
 
-    const { data } = await api.put("/v1/users/me/update", userData);
+    const { data } = await api.put(ENDPOINTS.AUTH.UPDATE_PROFILE, userData);
     dispatch(updateSuccess(data.success));
   } catch (error) {
     dispatch(updateFail(error.response?.data?.message));
   }
 };
 
-//logout
+// Logout
 export const logout = () => async (dispatch) => {
   try {
-    await api.get("/v1/users/logout");
+    await api.get(ENDPOINTS.AUTH.LOGOUT);
     localStorage.removeItem("token");
     dispatch(logoutSuccess());
   } catch (error) {

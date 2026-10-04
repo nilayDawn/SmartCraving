@@ -1,16 +1,50 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { getRestaurants } from "../../redux/actions/restaurantAction";
+import { resetFilters } from "../../redux/slices/restaurantSlice";
 
 const Search = () => {
   const [keyword, setKeyword] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
+
+  // Sync search bar with URL:
+  // If on `/eats/stores/search/:keyword`, show the decoded keyword.
+  // If navigating away to any other page (e.g. restaurant menus, cart, home), clear the bar.
+  useEffect(() => {
+    if (location.pathname.startsWith("/eats/stores/search/")) {
+      const currentKeyword = decodeURIComponent(
+        location.pathname.replace("/eats/stores/search/", "")
+      );
+      setKeyword(currentKeyword);
+    } else {
+      setKeyword("");
+    }
+  }, [location.pathname]);
 
   const searchHandler = (e) => {
     e.preventDefault();
-    if (keyword.trim()) {
-      navigate(`/eats/stores/search/${encodeURIComponent(keyword.trim())}`);
+    const trimmed = keyword.trim();
+
+    if (trimmed) {
+      const targetPath = `/eats/stores/search/${encodeURIComponent(trimmed)}`;
+      if (location.pathname === targetPath) {
+        // Re-searching the same keyword while already on the search page:
+        // Reset veg/sort filters and re-run search
+        dispatch(resetFilters());
+        dispatch(getRestaurants(trimmed));
+      } else {
+        navigate(targetPath);
+      }
     } else {
-      navigate("/restaurants");
+      if (location.pathname === "/restaurants") {
+        dispatch(resetFilters());
+        dispatch(getRestaurants());
+      } else {
+        navigate("/restaurants");
+      }
     }
   };
 
@@ -32,7 +66,11 @@ const Search = () => {
         {keyword && (
           <button
             type="button"
-            onClick={() => { setKeyword(""); navigate("/restaurants"); }}
+            onClick={() => {
+              setKeyword("");
+              dispatch(resetFilters());
+              navigate("/restaurants");
+            }}
             className="px-2 text-xs font-bold text-slate-400 hover:text-slate-600"
           >
             ✕

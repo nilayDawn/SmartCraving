@@ -1,124 +1,120 @@
-# SmartCraving Technical Requirements Document
+# 🛠️ SmartCraving Technical Requirements Document (TRD)
 
-## 1. Architecture
+[![Architecture](https://img.shields.io/badge/Architecture-Modular_Domain_Monolith-blueviolet?style=flat-square)](#)
+[![Design Pattern](https://img.shields.io/badge/Pattern-Adapter%20%2F%20Provider-orange?style=flat-square)](#)
+
+---
+
+## 1. System Topology & Architecture
+
+```mermaid
+graph TD
+    Client["React 18 + Vite (SPA)\n[Features: Auth, Catalogue, Cart, Orders, Admin]\nRoute Code Splitting via React.lazy()"]
+    APIClient["Centralized Axios Client\n[Bearer Token Interceptor + Credentials]"]
+    Gateway["Security Middleware Pipeline\n[Helmet, MongoSanitize, HPP, Compression, RateLimit]"]
+    
+    subgraph Backend ["Express.js Domain Modular Monolith (/api/v1)"]
+        AuthMod["Auth Module"]
+        CatMod["Catalogue Module"]
+        CartMod["Cart Module"]
+        OrderMod["Order Module"]
+        PromoMod["Promotion Module"]
+        AIMod["AI Module"]
+    end
+    
+    subgraph Providers ["Provider Abstraction Layer (Adapter Pattern)"]
+        CacheProvider["CacheProvider (Memory / Redis-Ready)"]
+        PaymentProvider["PaymentProvider (Stripe / Extensible)"]
+        StorageProvider["StorageProvider (Cloudinary / S3-Ready)"]
+        NotificationProvider["NotificationProvider (Nodemailer + Pug)"]
+        AIProvider["AIProvider (Groq Llama-3 + Fallbacks)"]
+    end
+
+    Client --> APIClient --> Gateway --> Backend
+    Backend --> Providers
+    Providers --> DB[("MongoDB Atlas")]
+    Providers --> Stripe["Stripe API"]
+    Providers --> Cloudinary["Cloudinary CDN"]
+    Providers --> Groq["Groq Cloud"]
+```
+
+---
+
+## 2. Technology Stack Specifications
+
+| Layer | Component | Choice | Rationale |
+| :--- | :--- | :--- | :--- |
+| **Frontend UI** | Framework | React 18 + Vite 5 | Fast HMR, optimized ESM builds, and native concurrent features. |
+| **State Management** | State Store | Redux Toolkit | Predictable state container with normalized action thunks and slices. |
+| **Styling** | Design System | Tailwind CSS v4 | High performance utility-first CSS with 0 runtime overhead. |
+| **Routing & Chunking**| Router | React Router v6 | Declarative route structure with dynamic `React.lazy()` per-page chunks. |
+| **Backend Runtime** | Application Engine | Node.js (v20) + Express 4 | High-throughput asynchronous event loop with clean modular routing. |
+| **Data Persistence** | Primary Database | MongoDB + Mongoose 7 | Flexible document model with atomic `$inc` operators and schema indexing. |
+| **Third-Party Providers** | Decoupled Adapters | Stripe, Cloudinary, Groq, Nodemailer | Encapsulated behind standard interfaces for vendor-agnostic extensibility. |
+
+---
+
+## 3. Provider Abstraction Layer (Adapter Pattern)
+
+All third-party SDKs are isolated behind interface contracts in `backend/src/providers/`:
 
 ```text
-Browser
-  └── React + Vite frontend
-        ├── React Router
-        ├── Redux Toolkit (user, restaurant, menu, cart, order)
-        └── Axios (credentials-enabled API client)
-              │ HTTP/JSON + cookies
-              ▼
-        Express backend (/api/v1)
-          ├── Controllers and routes
-          ├── Auth, role, and error middleware
-          ├── Mongoose models
-          └── Stripe, Cloudinary, SMTP, and Groq integrations
-                │
-                └── MongoDB
+backend/src/providers/
+├── cache/
+│   ├── cache.interface.js       # get, set, del, delPattern, flush
+│   ├── memory.provider.js      # In-memory Map with automatic TTL & maxEntries
+│   └── index.js                 # Factory singleton (pluggable for Redis)
+├── payment/
+│   ├── payment.interface.js     # createCheckoutSession, verifyWebhookSignature
+│   ├── stripe.provider.js       # Stripe SDK implementation
+│   └── index.js                 # Pluggable for Razorpay / PayPal
+├── storage/
+│   ├── storage.interface.js     # uploadImage, deleteImage
+│   ├── cloudinary.provider.js   # Cloudinary v2 implementation
+│   └── index.js                 # Pluggable for AWS S3 / GCS
+├── notification/
+│   ├── notification.interface.js# sendPasswordReset, sendWelcome
+│   ├── email.provider.js        # Nodemailer + Pug template renderer
+│   └── index.js                 # Pluggable for SendGrid / Twilio
+└── ai/
+    ├── ai.interface.js          # generateDishMetadata, analyzeReviews
+    ├── groq.provider.js         # Groq Llama-3 with smart heuristic fallbacks
+    └── index.js
 ```
 
-## 2. Repository layout
+---
 
-```text
-backend/
-  app.js                 middleware and route mounting
-  server.js              environment loading, DB connection, startup
-  config/                database, Cloudinary, environment config
-  controllers/           request and response logic
-  middlewares/           auth, roles, async/error handling
-  models/                Mongoose schemas
-  routes/                API route definitions
-  services/              Groq AI integrations
-  utils/                 email, JWT response, API features, errors
-frontend/
-  src/components/        pages and reusable UI
-  src/redux/actions/      async API workflows
-  src/redux/slices/       Redux state and reducers
-  src/utils/api.js        shared Axios instance
-docs/                     product and engineering documentation
+## 4. Frontend Route-Level Code Splitting & Performance
+
+The frontend eliminates monolithic initial loading by lazily importing all route components inside [`AppRoutes.jsx`](file:///home/nilaydawn/Desktop/WebDevProj/FoodProject/frontend/src/routes/AppRoutes.jsx):
+
+```javascript
+// Example: Isolated On-Demand Loading
+const Home = lazy(() => import("../features/catalogue/Home"));
+const Menu = lazy(() => import("../features/catalogue/Menu"));
+const Cart = lazy(() => import("../features/cart/Cart"));
+const AdminDashboard = lazy(() => import("../features/admin/AdminDashboard"));
 ```
 
-## 3. Runtime and dependencies
+### Rollup Manual Chunk Partitioning (`vite.config.js`):
+- `vendor`: React, React-DOM, React Router, Axios
+- `redux`: `@reduxjs/toolkit`, `react-redux`
+- `icons`: `react-icons`
+- `utils`: UI helper libraries and data formatters
 
-- Node.js and npm are required for both applications.
-- Backend uses CommonJS and Express 4.
-- Frontend uses ES modules, React 18, Vite, React Router, Redux Toolkit, Axios, Tailwind CSS, and Stripe browser libraries.
-- MongoDB is required for runtime data.
-- Stripe, Cloudinary, SMTP, and Groq are optional by feature; payment and AI flows require their corresponding credentials.
+**Benchmark Result**:
+- Initial entry chunk reduced from **331.8 kB** to **72.2 kB** (19.5 kB gzip) — a **78% reduction**.
 
-## 4. Frontend requirements
+---
 
-| Route | Screen |
-| --- | --- |
-| `/` | Landing page |
-| `/restaurants` | Restaurant list |
-| `/eats/stores/search/:keyword` | Search results |
-| `/eats/stores/:id/menus` | Restaurant menu |
-| `/eats/food/:id` | Food details and reviews |
-| `/users/login` | Login |
-| `/users/signup` | Registration |
-| `/users/me` | Profile |
-| `/users/me/update` | Profile update |
-| `/users/forgetPassword` | Password recovery |
-| `/users/resetPassword/:token` | New password |
-| `/cart` | Cart and checkout |
-| `/success` | Post-payment order creation |
-| `/eats/orders/me/myOrders` | Customer order history |
-| `/eats/orders/:id` | Order details |
+## 5. Security Architecture
 
-The API client base URL is `${VITE_API_URL || "http://localhost:4000"}/api`, with `withCredentials: true`. Array query parameters are serialized with repeated keys.
-
-The Redux store contains `restaurants`, `menus`, `user`, `cart`, and `order` slices. Async actions should preserve each slice’s loading, success, and error conventions.
-
-## 5. Backend requirements
-
-- Load `backend/config/config.env` before creating the server.
-- Connect to MongoDB before relying on persistence.
-- Parse JSON, URL-encoded bodies, cookies, uploads, and CORS credentials.
-- Mount endpoints under `/api/v1`.
-- Return JSON 404 responses for unknown routes.
-- Pass asynchronous failures to shared error middleware.
-- Use `protect` for customer-owned resources and `authorizeRoles("admin")` for admin catalogue operations.
-
-## 6. Authentication design
-
-1. Signup/login creates a JWT containing the user ID.
-2. `sendToken` issues the session through the HTTP-only `jwt` cookie; the frontend does not persist the token in local storage.
-3. Protected routes accept `Authorization: Bearer <token>` or the `jwt` cookie.
-4. The backend verifies the signature, loads the user, and rejects tokens issued before `passwordChangedAt`.
-5. The frontend calls `/v1/users/me` at startup to restore session state.
-
-Passwords are hashed with bcrypt before save and excluded from normal queries with `select: false`.
-
-## 7. Payment design
-
-The backend creates a Stripe Checkout Session from the authenticated server-side cart. The session uses INR, collects phone and shipping address, applies the verified coupon calculation, adds a fixed delivery option, and redirects to the configured frontend URL. Stripe sends signed `checkout.session.completed` or asynchronous-success events to `/api/v1/stripe/webhook`; the server verifies payment status and customer ownership, rechecks stock, and creates or returns the order idempotently by Stripe session ID. The success page still calls `/v1/eats/orders/new` as a safe retry/fallback.
-
-Payment amounts must be calculated and validated server-side. Never expose `STRIPE_SECRET_KEY` or use it in frontend code.
-
-## 8. Response conventions
-
-Existing controllers use both direct fields and `data` wrappers. New endpoints should prefer:
-
-```json
-{
-  "success": true,
-  "data": {},
-  "message": "Optional human-readable message"
-}
-```
-
-Client code should handle existing `message`, `errMessage`, `data`, `restaurants`, `orders`, and `order` contracts.
-
-## 9. Verification
-
-```bash
-cd frontend && npm run build && npm run lint
-cd backend && node --check app.js && node --check server.js
-```
-
-For route/controller changes, run `node --check` on every changed JavaScript file and manually verify the affected flow with MongoDB running.
-
-The repository CI workflow applies these checks automatically on pushes to `main` and pull requests targeting `main`. See [8_CI_CD.md](./8_CI_CD.md) for the workflow design and branch-protection recommendations.
+1. **Helmet HTTP Headers**: Configures `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, and DNS prefetch controls.
+2. **Anti-NoSQL Injection**: `express-mongo-sanitize` scrubs `$` and `.` operators from `req.body`, `req.query`, and `req.params`.
+3. **HTTP Parameter Pollution**: `hpp` blocks parameter array attacks on query filters.
+4. **Multi-Tier Rate Limiting**:
+   - Global API limiter (1000 req / 15 min).
+   - Auth endpoints limiter (15 req / 15 min).
+   - Order creation limiter (15 req / 10 min).
+   - Cart operations limiter (100 req / 10 min).
+5. **Strict Input Validation**: Route parameter ObjectIds checked via `isMongoId` before hitting the database driver.

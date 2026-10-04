@@ -1,0 +1,320 @@
+{
+  "root_group": {
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [],
+    "checks": [
+        {
+          "name": "stripeapi status is 200",
+          "path": "::stripeapi status is 200",
+          "id": "5252181c05c52d68a1ff02ba2eb889eb",
+          "passes": 8848,
+          "fails": 0
+        },
+        {
+          "id": "80a78a001f6e593104c07d7909bae70e",
+          "passes": 8848,
+          "fails": 0,
+          "name": "stripeapi returns publishable key",
+          "path": "::stripeapi returns publishable key"
+        },
+        {
+          "id": "f885b9ddf7bf38bf5b27b89fd032e53f",
+          "passes": 8848,
+          "fails": 0,
+          "name": "stripeapi is configured with Stripe Test key",
+          "path": "::stripeapi is configured with Stripe Test key"
+        },
+        {
+          "name": "empty cart status is 400",
+          "path": "::empty cart status is 400",
+          "id": "68cfd5279d8a5cf87622d79dc6e1ca08",
+          "passes": 2,
+          "fails": 0
+        },
+        {
+          "path": "::empty cart message is \"Your cart is empty\"",
+          "id": "7f92637510e5a62a4c9172a939e1a3eb",
+          "passes": 2,
+          "fails": 0,
+          "name": "empty cart message is \"Your cart is empty\""
+        },
+        {
+          "name": "empty cart avoided 500 error",
+          "path": "::empty cart avoided 500 error",
+          "id": "c61a5590f0dca098c41e9292c74de4ba",
+          "passes": 2,
+          "fails": 0
+        },
+        {
+          "fails": 0,
+          "name": "payment process status is 200",
+          "path": "::payment process status is 200",
+          "id": "277d923d74e6d322b4fdee628f887e89",
+          "passes": 2
+        },
+        {
+          "name": "payment process returned checkout url",
+          "path": "::payment process returned checkout url",
+          "id": "7decbffe39f8bc715659a82f8847648e",
+          "passes": 2,
+          "fails": 0
+        },
+        {
+          "name": "payment process within rate limits (not 429)",
+          "path": "::payment process within rate limits (not 429)",
+          "id": "8e83e6058fc1f5dc741eebe20fcdc9e3",
+          "passes": 2,
+          "fails": 0
+        }
+      ]
+  },
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(90)",
+      "p(95)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  },
+  "state": {
+    "isStdOutTTY": true,
+    "isStdErrTTY": true,
+    "testRunDurationMs": 200411.729258
+  },
+  "metrics": {
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 8909
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 17.812745,
+        "med": 53.875185,
+        "max": 1063.622353,
+        "p(90)": 173.41583819999997,
+        "p(95)": 190.3643056,
+        "avg": 74.82700801245903
+      },
+      "thresholds": {
+        "p(95)<1500": {
+          "ok": true
+        },
+        "p(99)<2500": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_tls_handshaking": {
+      "values": {
+        "p(95)": 0,
+        "avg": 0,
+        "min": 0,
+        "med": 0,
+        "max": 0,
+        "p(90)": 0
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.10061134156471013,
+        "min": 0.015758,
+        "med": 0.096268,
+        "max": 0.619227,
+        "p(90)": 0.1485136,
+        "p(95)": 0.1692700000000001
+      }
+    },
+    "http_req_blocked": {
+      "values": {
+        "avg": 0.011520350432147256,
+        "min": 0.001529,
+        "med": 0.007875,
+        "max": 0.740774,
+        "p(90)": 0.012929,
+        "p(95)": 0.01650200000000001
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "http_req_connecting": {
+      "contains": "time",
+      "values": {
+        "avg": 0.0018068527331911559,
+        "min": 0,
+        "med": 0,
+        "max": 0.520541,
+        "p(90)": 0,
+        "p(95)": 0
+      },
+      "type": "trend"
+    },
+    "checks": {
+      "values": {
+        "rate": 1,
+        "passes": 26556,
+        "fails": 0
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 8850,
+        "rate": 44.15909204898359
+      }
+    },
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 3288527,
+        "rate": 16408.85497158959
+      }
+    },
+    "http_reqs": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 8909,
+        "rate": 44.45348599597681
+      }
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 50,
+        "min": 50,
+        "max": 50
+      }
+    },
+    "http_req_duration{endpoint:payment_process}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 458.41579175000004,
+        "min": 106.378824,
+        "med": 387.117681,
+        "max": 953.048981,
+        "p(90)": 865.3006970000001,
+        "p(95)": 909.1748389999999
+      },
+      "thresholds": {
+        "p(95)<2500": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_duration{endpoint:stripe_api}": {
+      "thresholds": {
+        "p(95)<300": {
+          "ok": true
+        }
+      },
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 71.40709826706575,
+        "min": 42.490972,
+        "med": 53.8441445,
+        "max": 761.160379,
+        "p(90)": 168.9731489,
+        "p(95)": 189.2147032
+      }
+    },
+    "http_req_duration{expected_response:true}": {
+      "values": {
+        "avg": 74.82700801245903,
+        "min": 17.812745,
+        "med": 53.875185,
+        "max": 1063.622353,
+        "p(90)": 173.41583819999997,
+        "p(95)": 190.3643056
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.029435349983163075,
+        "min": 0.004469,
+        "med": 0.025064,
+        "max": 0.507764,
+        "p(90)": 0.045192199999999995,
+        "p(95)": 0.05452380000000001
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 7851251,
+        "rate": 39175.60628346604
+      }
+    },
+    "vus": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 2,
+        "min": 0,
+        "max": 50
+      }
+    },
+    "iteration_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 576.4578275677972,
+        "min": 543.025005,
+        "med": 554.768296,
+        "max": 4890.906955,
+        "p(90)": 674.3906499,
+        "p(95)": 690.8787950999999
+      }
+    },
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 17.538203,
+        "med": 53.731462,
+        "max": 1063.344866,
+        "p(90)": 173.33431679999995,
+        "p(95)": 190.30699620000001,
+        "avg": 74.69696132091141
+      }
+    }
+  },
+  "setup_data": {
+    "foodItemId": "6671720fe1a78e67dc8c8dd8",
+    "storeId": "6671719fe1a78e67dc8c8dce",
+    "targetUrl": "http://localhost:4000"
+  }
+}

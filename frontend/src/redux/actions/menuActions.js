@@ -1,10 +1,11 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import API from "../../utils/api"; 
+import api from "../../api/client";
+import { ENDPOINTS } from "../../api/endpoints";
 
 const MENU_CACHE_TTL = 60 * 1000;
 const menuCache = new Map();
 
-//GET MENUS
+// Get menus
 export const getMenus = createAsyncThunk(
   "menus/getMenus",
   async (id, { rejectWithValue }) => {
@@ -14,7 +15,7 @@ export const getMenus = createAsyncThunk(
         return cached.value;
       }
 
-      const response = await API.get(`/v1/eats/stores/${id}/menus`);
+      const response = await api.get(ENDPOINTS.CATALOGUE.STORE_MENUS(id));
 
       let menuData = [];
       let menuDocId = null;
@@ -27,14 +28,12 @@ export const getMenus = createAsyncThunk(
       menuCache.set(id, { timestamp: Date.now(), value });
       return value;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message
-      );
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
-  }
+  },
 );
 
-//CREATE MENU
+// Create menu
 export const createMenu = createAsyncThunk(
   "menus/createMenu",
   async ({ restaurantId, category }, { rejectWithValue }) => {
@@ -44,50 +43,37 @@ export const createMenu = createAsyncThunk(
         menu: [{ category, items: [] }],
       };
 
-      const { data } = await API.post(
-        `/v1/eats/stores/${restaurantId}/menus`,
+      const { data } = await api.post(
+        ENDPOINTS.CATALOGUE.STORE_MENUS(restaurantId),
         body,
-        {
-          headers: { "Content-Type": "application/json" },
-        }
+        { headers: { "Content-Type": "application/json" } },
       );
 
       menuCache.delete(restaurantId);
-
       return data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message
-      );
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
-  }
+  },
 );
 
-//ADD ITEM
+// Add item to menu
 export const addItemToMenu = createAsyncThunk(
   "menus/addItemToMenu",
-  async (
-    { menuId, category, foodItemId, restaurantId },
-    { rejectWithValue }
-  ) => {
+  async ({ menuId, category, foodItemId, restaurantId }, { rejectWithValue }) => {
     try {
       const body = { category, foodItemId };
 
-      const { data } = await API.patch(
-        `/v1/eats/stores/${restaurantId}/menus/${menuId}/addItem`,
+      const { data } = await api.patch(
+        ENDPOINTS.CATALOGUE.STORE_MENU_ADD_ITEM(restaurantId, menuId),
         body,
-        {
-          headers: { "Content-Type": "application/json" },
-        }
+        { headers: { "Content-Type": "application/json" } },
       );
 
       menuCache.delete(restaurantId);
-
       return data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message
-      );
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
-  }
+  },
 );

@@ -1,69 +1,111 @@
-# SmartCraving Data Model
+# 🗄️ SmartCraving Data Model & Schema Invariants
 
-MongoDB is accessed through Mongoose. Object IDs are stored as `ObjectId` values.
+[![Database](https://img.shields.io/badge/Database-MongoDB_Atlas-green?style=flat-square)](#)
+[![ODM](https://img.shields.io/badge/ODM-Mongoose_7-blue?style=flat-square)](#)
 
-## Relationships
+---
 
-```text
-User 1 ─── 1 Cart ─── * CartItem ─── 1 FoodItem
-User 1 ─── * Order ─── 1 Restaurant
-Restaurant 1 ─── * Menu
-Menu 1 ─── * category ─── * FoodItem
-FoodItem 1 ─── * food reviews
-Restaurant 1 ─── * restaurant reviews
+## 1. Entity-Relationship Diagram (ERD)
+
+```mermaid
+erDiagram
+    USER ||--o{ ORDER : places
+    USER ||--o| CART : owns
+    RESTAURANT ||--o{ MENU : contains
+    RESTAURANT ||--o{ ORDER : receives
+    MENU ||--|{ FOOD_ITEM : categorizes
+    CART ||--|{ CART_ITEM : holds
+    ORDER ||--|{ ORDER_ITEM : snapshots
+    FOOD_ITEM ||--o{ REVIEW : receives
+
+    USER {
+        ObjectId _id PK
+        string name
+        string email UK
+        string password
+        string role "user | admin | restaurant-owner"
+        object avatar
+        date passwordChangedAt
+    }
+
+    RESTAURANT {
+        ObjectId _id PK
+        string name
+        boolean isVeg
+        string address
+        number ratings
+        number numOfReviews
+        array images
+    }
+
+    MENU {
+        ObjectId _id PK
+        ObjectId restaurant FK
+        array categories
+    }
+
+    FOOD_ITEM {
+        ObjectId _id PK
+        ObjectId restaurant FK
+        string name
+        number price
+        number stock
+        string description
+        string aiDescription
+        array aiTags
+    }
+
+    CART {
+        ObjectId _id PK
+        ObjectId user FK
+        ObjectId restaurant FK
+        array items
+    }
+
+    ORDER {
+        ObjectId _id PK
+        ObjectId user FK
+        ObjectId restaurant FK
+        string stripeSessionId UK
+        number finalTotal
+        string orderStatus "Processing | Dispatched | Delivered | Cancelled"
+        object deliveryInfo
+    }
+
+    COUPON {
+        ObjectId _id PK
+        string couponName UK
+        number discount
+        number maxDiscount
+        number minAmount
+        date expireDate
+    }
 ```
 
-## Collections
+---
 
-### User
+## 2. Collection Schemas & Indexing Strategies
 
-`name`, unique lowercase `email`, hashed `password`, `passwordConfirm` (removed after hashing), ten-digit `phoneNumber`, `role`, avatar `{ public_id, url }`, password-change timestamp, and password-reset token/expiry. Mongoose timestamps add `createdAt` and `updatedAt`.
+### 2.1 `User`
+- **Unique Indexes**: `email` (lowercase, trimmed).
+- **Security Invariant**: `password` is hashed using `bcryptjs` with salt rounds = 10 and has `select: false` by default.
 
-Roles: `user`, `restaurant-owner`, and `admin`.
+### 2.2 `Restaurant`
+- **Text Index**: `{ name: "text", address: "text" }` for high-speed multi-term fuzzy matching.
+- **Geo Index**: `location: "2dsphere"` for geospatial radius queries.
 
-### Restaurant
+### 2.3 `FoodItem`
+- **Compound Indexes**: `{ restaurant: 1, name: 1 }` for high-throughput menu browsing.
+- **Inventory Invariant**: `stock >= 0`. Stock updates are performed via atomic `$inc` operators.
 
-`name`, `isVeg`, `address`, average `ratings`, `numOfReviews`, GeoJSON `location`, `reviews`, AI review fields, image array, and `createdAt`.
+### 2.4 `Cart`
+- **Unique Index**: `{ user: 1 }` ensuring one active cart per customer.
+- **Single-Restaurant Invariant**: If a customer adds an item with `restaurant_id !== cart.restaurant_id`, existing items are atomically cleared.
 
-Indexes: `location` uses `2dsphere`; `address` uses a text index. Review fields are `name`, numeric `rating`, and `Comment`; review subdocuments have generated IDs for administrative deletion.
+### 2.5 `Order`
+- **Unique Index**: `stripeSessionId` prevents duplicate order records on checkout success page refreshes.
+- **Data Immobility Invariant**: Order items snapshot `name`, `price`, and `image` at the time of purchase so historical receipts are unaffected by future menu edits.
 
-### Menu
-
-```json
-{
-  "restaurant": "RESTAURANT_ID",
-  "menu": [{ "category": "Main Course", "items": ["FOOD_ID"] }]
-}
-```
-
-Menu item references are populated when menus are read.
-
-### FoodItem
-
-Core fields are `name`, `price`, `description`, `ratings`, `images`, `menu`, `stock`, `restaurant`, `numOfReviews`, and `reviews`. AI fields are `aiDescription`, `aiTags`, `aiAllergens`, `aiServes`, and `aiBestFor`; persisted review-summary fields are `reviewSentiment`, `reviewSummaryBullets`, and `reviewTopMentions`. Review summaries are cleared when reviews change.
-
-### Cart
-
-Stores `user`, `restaurant`, `createdAt`, and `items`. Each item contains a required `foodItem` reference and minimum quantity of 1. The controller enforces one restaurant per cart by replacing the cart when a different restaurant is selected.
-
-### Order
-
-Stores delivery information, user, restaurant, order-item snapshots, payment ID/status, unique Stripe session ID, item total, tax, delivery charge, final total, status, paid/delivered timestamps, and creation time.
-
-Order items copy `name`, `quantity`, `image`, and `price`, while retaining the `fooditem` reference. This preserves historical display values if the catalogue changes.
-
-### Coupon
-
-Stores unique `couponName`, subtitle, minimum amount, maximum discount, percentage discount, details, and expiry date.
-
-## Invariants and validation
-
-- User email must be valid and unique.
-- User password must be at least six characters; confirmation must match.
-- Restaurant location must be GeoJSON Point data.
-- Food item name, description, price, and stock are required.
-- Food ratings accepted by the food-review controller are 1 through 5.
-- Cart quantities must be at least 1 at schema level.
-- Orders must have a user, delivery info, order items, and final total.
-- Stripe session IDs are unique when present so payment-success retries return the existing order.
-- Payment/order creation should reject an empty or missing cart before production use.
+### 2.6 `Coupon`
+- **Unique Index**: `couponName` (uppercase, alphanumeric).
+- **Discount Invariant**: Calculated discount cannot exceed `maxDiscount` and requires cart total $\ge \text{minAmount}$.

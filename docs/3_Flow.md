@@ -1,87 +1,118 @@
-# SmartCraving User and System Flows
+# 🔄 SmartCraving System Flows & Sequence Diagrams
 
-## 1. Customer ordering flow
+[![Diagrams](https://img.shields.io/badge/Diagrams-Mermaid_JS-blue?style=flat-square)](#)
 
-```text
-Landing page → Restaurant list/search → Restaurant menu → Food details
-→ Add item → Cart → Stripe Checkout → Payment success
-→ /success?session_id=... → Retrieve Stripe session
-→ Save order and delete cart → Confirmation/order details
+---
+
+## 1. End-to-End Customer Order & Payment Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Customer as 🛒 Customer
+    participant Frontend as 💻 React App (Vite)
+    participant Server as ⚙️ Express Backend
+    participant DB as 🗄️ MongoDB Atlas
+    participant Stripe as 💳 Stripe Checkout
+
+    Customer->>Frontend: Select Restaurant Dishes & Click "Checkout"
+    Frontend->>Server: POST /api/v1/payment/process (Items, Restaurant, Coupon)
+    Server->>Server: Revalidate Cart Prices & Coupon Constraints
+    Server->>Stripe: Create Stripe Checkout Session
+    Stripe-->>Server: Return Checkout URL & Session ID
+    Server-->>Frontend: Return Session URL
+    Frontend->>Stripe: Redirect Customer to Stripe
+    Customer->>Stripe: Submits Payment Details
+    Stripe-->>Customer: Redirect to /eats/orders/success?session_id=...
+    Customer->>Frontend: Loads Success Page with Session ID
+    Frontend->>Server: POST /api/v1/eats/orders/new (sessionId, orderItems)
+    Server->>Server: Validate Session Status & Deduplicate Request
+    Server->>DB: Atomic Inventory Decrement ($inc: -qty)
+    Server->>DB: Save Order (Status: 'Processing') & Clear User Cart
+    Server-->>Frontend: Order Confirmed Response
+    Frontend-->>Customer: Render Order Confirmation & Receipt
 ```
 
-1. `App` mounts and dispatches `loadUser`.
-2. The customer browses/searches with `GET /api/v1/eats/stores`.
-3. The customer opens a menu with `GET /api/v1/eats/stores/:storeId/menus`.
-4. The customer opens a food item with `GET /api/v1/eats/item/:foodId`.
-5. The cart action posts food item, restaurant, and quantity to `/api/v1/eats/cart/add-to-cart`; the backend derives the customer from the session.
-6. A different restaurant replaces the existing cart.
-7. Checkout posts the selected coupon code and cart context to `/api/v1/payment/process`; the server reloads prices, stock, and coupon rules.
-8. Stripe collects payment and delivery data, then redirects to the frontend success URL.
-9. The frontend posts the Stripe session ID to `/api/v1/eats/orders/new`.
-10. The backend verifies payment status and customer ownership, rechecks stock, creates or returns the idempotent order for that Stripe session, and deletes the cart.
-11. The customer can view orders through `/api/v1/eats/orders/me/myOrders`.
+---
 
-## 2. Authentication flow
+## 2. Authentication & Dual-Auth Strategy Flow
 
-```text
-Signup/Login → Validate credentials → Issue JWT
-→ Cookie or Bearer token → Protected request
-→ protect middleware verifies the HTTP-only session cookie → req.user is available
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 👤 User / Admin
+    participant Client as 💻 React (Axios)
+    participant AuthMW as 🛡️ Auth Middleware
+    participant Service as 🔐 Auth Service
+    participant DB as 🗄️ MongoDB
+
+    User->>Client: Enters Credentials (Email & Password)
+    Client->>AuthMW: POST /api/v1/users/login
+    AuthMW->>AuthMW: Validate Email Format & Password Length
+    AuthMW->>Service: Authenticate Credentials
+    Service->>DB: Find User by Email (+password select)
+    Service->>Service: Verify Bcrypt Hash
+    Service-->>Client: Sets HTTP-Only Cookie + Returns JWT in JSON Body
+    Client->>Client: Stores Fallback Bearer Token in localStorage
+    Note over Client,AuthMW: Subsequent Protected Requests:
+    Client->>AuthMW: GET /api/v1/users/me (Cookie + Bearer Header)
+    AuthMW->>AuthMW: Verify Token (Cookie first, Fallback to Header)
+    AuthMW-->>Client: Return 200 with User Context
 ```
 
-Logout clears the authentication cookie. Password changes invalidate older JWTs through `passwordChangedAt`.
+---
 
-## 3. Catalogue administration flow
+## 3. AI Sentiment Analysis with Content-Hash Caching
 
-```text
-Admin request → protect → authorizeRoles("admin")
-→ Controller validation → MongoDB write → JSON response
-→ Redux state refresh/update
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 👤 User / Admin
+    participant Server as ⚙️ Express Backend
+    participant Cache as ⚡ Memory Cache
+    participant Groq as 🤖 Groq Llama-3 AI
+    participant DB as 🗄️ MongoDB
+
+    User->>Server: POST /api/v1/ai/stores/:id/summary
+    Server->>DB: Fetch Approved Customer Reviews
+    Server->>Server: Compute Content Hash: MD5(reviews)
+    Server->>Cache: Check Key: `store:<id>:<hash>`
+    alt Cache HIT (Valid within 1 Hour)
+        Cache-->>Server: Return Cached Sentiment & Highlights
+        Server-->>User: Instant Response (X-Cache: HIT)
+    else Cache MISS or Expired
+        Server->>Groq: Generate Sentiment & Summaries (Llama-3)
+        alt Groq Upstream Success
+            Groq-->>Server: JSON (Sentiment, Bullets, Keywords)
+        else Groq Rate Limited / Error
+            Server->>Server: Execute Smart Local Heuristic Fallback
+        end
+        Server->>Cache: Set Key with 1 Hour TTL
+        Server-->>User: Generated Insights (X-Cache: MISS)
+    end
 ```
 
-Normal catalogue order: create restaurant, create linked menu, create linked food items, add food IDs to menu categories, then publish for browsing.
+---
 
-## 4. Review and AI flow
+## 4. Admin Catalog Write & Cache Invalidation Flow
 
-### Restaurant review
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as 👨‍💼 Administrator
+    participant Gateway as 🛡️ Express Gateway
+    participant CatController as 📦 Catalogue Controller
+    participant Cache as ⚡ Memory Cache Provider
+    participant DB as 🗄️ MongoDB Atlas
 
-1. An authenticated customer submits `name`, `rating`, and `Comment`.
-2. Backend appends the review and recalculates count/average.
-3. An authenticated user clicks the restaurant or food-item AI summary button.
-4. The frontend requests the corresponding summary endpoint.
-5. Backend returns the persisted summary when reviews have not changed; otherwise it computes a content-hash fingerprint and uses an entity-scoped cache key (`restaurant:<id>:<hash>` or `food:<id>:<hash>`).
-6. On **Cache Hit** (valid 1-hour TTL), cached sentiment (`sentiment`, `summaryBullets`, `topMentions`) is returned immediately.
-7. On **Cache Miss**, backend sends the current comments to the AI service, caches the result, and persists the latest summary fields.
-8. Adding or deleting a review clears the persisted summary so the next request reflects the new review set.
-9. If external AI fails, the system uses a local heuristic analyzer fallback.
-
-### Food metadata
-
-The generate-only endpoint returns AI data for preview. The `/:foodId` endpoint saves `aiDescription`, `aiTags`, `aiAllergens`, `aiServes`, and `aiBestFor`.
-
-Review summaries are authenticated and rate-limited. Existing summaries are returned from cache/document data, and any authenticated user may generate a missing summary. Administrators may delete reviews. Restaurant requests use `POST /api/v1/ai/stores/:id/summary`; food-item requests use `POST /api/v1/ai/items/:id/summary`.
-
-## 5. Password reset flow
-
-```text
-Forgot form → POST /users/forgetPassword → Random token
-→ Hashed token + expiry stored → Email reset URL
-→ PATCH /users/resetPassword/:token → Match hash
-→ Save new password and issue JWT
+    Admin->>Gateway: POST /api/v1/eats/item (New Dish Details)
+    Gateway->>Gateway: Verify Admin Role & Validate Inputs
+    Gateway->>CatController: Execute createFoodItem()
+    CatController->>DB: Insert FoodItem & Update Menu Category
+    CatController->>Cache: Invalidate Patterns: `*items*`, `*menus*`, `*stores*`
+    Cache-->>CatController: Purged Affected Keys
+    CatController-->>Admin: Return 201 Created Response
+    Note over Admin,Gateway: Subsequent Customer Reads:
+    Customer->>Gateway: GET /api/v1/eats/stores
+    Gateway->>DB: Fetch Fresh Catalog & Re-populate Cache
 ```
-
-## 6. Failure paths
-
-- Missing/invalid credentials: 400/401 and unauthenticated state.
-- Missing protected token: 401.
-- Missing resource: 404.
-- Stripe cancellation: return to cart without creating an order.
-- AI failure: review analysis has a local fallback; food generation returns an integration error.
-- Unknown API route: JSON 404 from Express.
-
-## 7. Consistency rules
-
-- A cart contains items from one restaurant only.
-- Orders snapshot item name, price, image, and quantity so catalogue edits do not rewrite history.
-- Ratings are derived from review arrays.
-- Frontend calls use `/api`; backend public endpoints use `/api/v1`.

@@ -1,0 +1,352 @@
+{
+  "root_group": {
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [],
+    "checks": [
+        {
+          "name": "myOrders status is 200",
+          "path": "::myOrders status is 200",
+          "id": "bdeaa2a36d91c7d956923746b5a9ae40",
+          "passes": 454,
+          "fails": 7
+        },
+        {
+          "name": "myOrders returns success true",
+          "path": "::myOrders returns success true",
+          "id": "8bbe3d32a7b9a8fa496385d7a6d2bf3a",
+          "passes": 454,
+          "fails": 7
+        },
+        {
+          "name": "myOrders returns orders array",
+          "path": "::myOrders returns orders array",
+          "id": "1dea8c0170b73055ac121388d28d2e87",
+          "passes": 454,
+          "fails": 7
+        },
+        {
+          "name": "new-order status is handled safely (200, 400, or 404)",
+          "path": "::new-order status is handled safely (200, 400, or 404)",
+          "id": "c32668076bec2a34fa2aeaa2a39b1ec6",
+          "passes": 2,
+          "fails": 0
+        },
+        {
+          "path": "::new-order avoided unhandled 500 error",
+          "id": "a3fc1557d45e739ecd25a276e4038a2f",
+          "passes": 2,
+          "fails": 0,
+          "name": "new-order avoided unhandled 500 error"
+        },
+        {
+          "name": "new-order passed schema validation",
+          "path": "::new-order passed schema validation",
+          "id": "1462d01d666747ae46dd7b1749fa01da",
+          "passes": 2,
+          "fails": 0
+        },
+        {
+          "passes": 2,
+          "fails": 0,
+          "name": "new-order within rate limits (not 429)",
+          "path": "::new-order within rate limits (not 429)",
+          "id": "0f5c266f13d42b0557f3ecbf59fd7c9b"
+        },
+        {
+          "name": "get-order status is 200 (owned) or 403 (tenant isolation)",
+          "path": "::get-order status is 200 (owned) or 403 (tenant isolation)",
+          "id": "0f104fb69a7ef4a28f7ee17e219b8428",
+          "passes": 446,
+          "fails": 7
+        },
+        {
+          "name": "get-order response structure is valid",
+          "path": "::get-order response structure is valid",
+          "id": "d5429967af01c8e2d19fd8281974ef74",
+          "passes": 446,
+          "fails": 7
+        },
+        {
+          "fails": 0,
+          "name": "invalid-session status is 400",
+          "path": "::invalid-session status is 400",
+          "id": "712f25b56601734b37a9977407eb5f66",
+          "passes": 2
+        },
+        {
+          "path": "::invalid-session error message is \"Invalid checkout session\"",
+          "id": "84815313e12145f3babfba25b50d221a",
+          "passes": 2,
+          "fails": 0,
+          "name": "invalid-session error message is \"Invalid checkout session\""
+        }
+      ]
+  },
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(90)",
+      "p(95)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  },
+  "state": {
+    "isStdOutTTY": true,
+    "isStdErrTTY": true,
+    "testRunDurationMs": 72341.339386
+  },
+  "metrics": {
+    "http_req_duration": {
+      "contains": "time",
+      "values": {
+        "p(95)": 634.738939649999,
+        "avg": 217.6618060976646,
+        "min": 0,
+        "med": 159.227328,
+        "max": 1725.284476,
+        "p(90)": 407.2474145
+      },
+      "thresholds": {
+        "p(95)<1500": {
+          "ok": true
+        },
+        "p(99)<2500": {
+          "ok": true
+        }
+      },
+      "type": "trend"
+    },
+    "http_req_connecting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 0,
+        "max": 1.512594,
+        "p(90)": 0,
+        "p(95)": 0,
+        "avg": 0.011954880042462847,
+        "min": 0
+      }
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 0,
+        "med": 0.032083,
+        "max": 0.363004,
+        "p(90)": 0.0528482,
+        "p(95)": 0.0695231499999999,
+        "avg": 0.03613637579617834
+      }
+    },
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 0.11510500000000001,
+        "max": 0.607974,
+        "p(90)": 0.1627253,
+        "p(95)": 0.17930195,
+        "avg": 0.115772611464968,
+        "min": 0
+      }
+    },
+    "data_received": {
+      "contains": "data",
+      "values": {
+        "count": 873093,
+        "rate": 12069.074299845865
+      },
+      "type": "counter"
+    },
+    "checks": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.9847892220773576,
+        "passes": 2266,
+        "fails": 35
+      }
+    },
+    "http_req_duration{endpoint:my_orders}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 1559.688283,
+        "p(90)": 279.278031,
+        "p(95)": 317.86586,
+        "avg": 156.52697602386127,
+        "min": 0,
+        "med": 106.687091
+      },
+      "thresholds": {
+        "p(95)<450": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_waiting": {
+      "values": {
+        "med": 159.0527085,
+        "max": 1725.076915,
+        "p(90)": 407.15588809999997,
+        "p(95)": 634.5005336499989,
+        "avg": 217.50989711040367,
+        "min": 0
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "vus": {
+      "contains": "default",
+      "values": {
+        "value": 20,
+        "min": 0,
+        "max": 20
+      },
+      "type": "gauge"
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0,
+        "min": 0,
+        "med": 0,
+        "max": 0,
+        "p(90)": 0,
+        "p(95)": 0
+      }
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 50,
+        "min": 50,
+        "max": 50
+      }
+    },
+    "data_sent": {
+      "values": {
+        "count": 374883,
+        "rate": 5182.140712099533
+      },
+      "type": "counter",
+      "contains": "data"
+    },
+    "iterations": {
+      "values": {
+        "count": 450,
+        "rate": 6.220509653531341
+      },
+      "type": "counter",
+      "contains": "default"
+    },
+    "iteration_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 1448.4129778955553,
+        "min": 1101.222285,
+        "med": 1277.0280025000002,
+        "max": 3788.157466,
+        "p(90)": 1941.6262936000005,
+        "p(95)": 2226.7810809
+      }
+    },
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.014861995753715499,
+        "passes": 14,
+        "fails": 928
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_blocked": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 1.671435,
+        "p(90)": 0.015909399999999997,
+        "p(95)": 0.03748594999999999,
+        "avg": 0.028338772823779196,
+        "min": 0,
+        "med": 0.0097545
+      }
+    },
+    "http_req_duration{expected_response:true}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 220.71121570474145,
+        "min": 17.788192,
+        "med": 159.346306,
+        "max": 1725.284476,
+        "p(90)": 408.1997102,
+        "p(95)": 637.7720797
+      }
+    },
+    "http_req_duration{endpoint:get_order}": {
+      "values": {
+        "max": 1725.284476,
+        "p(90)": 450.6879932,
+        "p(95)": 633.5209101999991,
+        "avg": 254.09330379470177,
+        "min": 0,
+        "med": 164.639576
+      },
+      "thresholds": {
+        "p(95)<850": {
+          "ok": true
+        }
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "http_req_duration{endpoint:new_order}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 266.2919425,
+        "max": 644.800538,
+        "p(90)": 593.7321263,
+        "p(95)": 619.2663321499999,
+        "avg": 306.33441525,
+        "min": 47.953238
+      },
+      "thresholds": {
+        "p(95)<1200": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs": {
+      "values": {
+        "count": 942,
+        "rate": 13.02160020805894
+      },
+      "type": "counter",
+      "contains": "default"
+    }
+  },
+  "setup_data": {
+    "foodItemId": "6671720fe1a78e67dc8c8dd8",
+    "sampleOrderId": "6a82a13c4d3cb721c8a002a3",
+    "storeId": "6671719fe1a78e67dc8c8dce",
+    "targetUrl": "http://localhost:4000"
+  }
+}

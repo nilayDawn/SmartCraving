@@ -31,6 +31,10 @@ const restaurantSlice = createSlice({
             state.showVegOnly = !state.showVegOnly;
             state.pureVegRestaurantsCount = calculatePureVegCount(state.restaurants,state.showVegOnly);
         },
+        resetFilters:(state) =>{
+            state.showVegOnly = false;
+            state.pureVegRestaurantsCount = calculatePureVegCount(state.restaurants, false);
+        },
         clearError:(state) =>{
             state.error = null;
         }
@@ -132,9 +136,8 @@ export const {
     sortByRatings,
     sortByReviews,
     toggleVegOnly,
+    resetFilters,
     clearError,
-    
-    
 } = restaurantSlice.actions;
 
 export default restaurantSlice.reducer;

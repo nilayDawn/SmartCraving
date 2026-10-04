@@ -1,110 +1,116 @@
-# Local Setup Guide
+# 💻 SmartCraving Local Development Setup Guide
+
+[![Node](https://img.shields.io/badge/Node.js-%E2%89%A518.0.0-green?style=flat-square)](#)
+[![npm](https://img.shields.io/badge/npm-%E2%89%A59.0.0-red?style=flat-square)](#)
+
+---
 
 ## 1. Prerequisites
+- **Node.js**: $\ge 18.0.0$ (LTS recommended)
+- **MongoDB**: Local MongoDB instance (`mongod`) or a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster URI.
+- **Git**
 
-- Node.js 18 or newer is recommended.
-- npm.
-- MongoDB reachable from the backend.
-- Stripe test-mode keys for checkout.
-- Optional: Cloudinary and Groq credentials.
+---
 
-## 2. Install dependencies
+## 2. Step-by-Step Installation
 
+### Step 2.1: Clone Repository
+```bash
+git clone https://github.com/your-username/FoodProject.git
+cd FoodProject
+```
+
+### Step 2.2: Install Backend Dependencies
 ```bash
 cd backend
 npm install
+```
+
+### Step 2.3: Install Frontend Dependencies
+```bash
 cd ../frontend
 npm install
 ```
 
-## 3. Configure the backend
+---
 
-Create `backend/config/config.env` locally. Do not commit it.
+## 3. Environment Configuration
+
+### Backend: `backend/config/config.env`
+Create `backend/config/config.env`:
 
 ```env
 PORT=4000
 NODE_ENV=DEVELOPMENT
-DB_LOCAL_URI=mongodb://127.0.0.1:27017/smartcraving
-JWT_SECRET=replace-with-a-long-random-secret
+DB_LOCAL_URI=mongodb://127.0.0.1:27017/foodproject
+JWT_SECRET=super_secure_jwt_secret_key_minimum_32_chars
 JWT_EXPIRE=90d
 JWT_COOKIE_EXPIRES_DAYS=90
 FRONTEND_URL=http://localhost:5173
 
-# Optional integrations
+# Optional: Stripe Payment (Required for live test checkouts)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_API_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Optional: Cloudinary Media Storage
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
-# Gmail SMTP is used for password-reset emails. Use a Google App Password,
-# not your normal Gmail password.
+
+# Optional: AI Review Insights (Groq Cloud)
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=llama3-70b-8192
+
+# Optional: SMTP Password Recovery Emails
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
-EMAIL_USERNAME=your-gmail-address@gmail.com
-EMAIL_PASSWORD=your-16-character-google-app-password
-EMAIL_FROM="SmartCraving <your-gmail-address@gmail.com>"
-# Optional explicit frontend origin used in reset links.
-RESET_URL_ORIGIN=http://localhost:5173
-STRIPE_SECRET_KEY=sk_test_replace_me
-STRIPE_API_KEY=pk_test_replace_me
-STRIPE_WEBHOOK_SECRET=whsec_replace_me
-GROQ_API_KEY=
-# Optional; defaults to openai/gpt-oss-20b. Override only with a currently supported Groq model.
-GROQ_MODEL=openai/gpt-oss-20b
+EMAIL_USERNAME=your_email@gmail.com
+EMAIL_PASSWORD=your_google_app_password
+EMAIL_FROM="SmartCraving <no-reply@smartcraving.com>"
 ```
 
-`FRONTEND_URL` supports comma-separated origins for CORS. The backend loads this file from `backend/server.js` and payment/order code reads it directly too.
-
-For Stripe webhook testing, create a webhook endpoint at `/api/v1/stripe/webhook` and subscribe to `checkout.session.completed` and `checkout.session.async_payment_succeeded`. Store the signing secret in `STRIPE_WEBHOOK_SECRET`. Locally, Stripe CLI can forward events with `stripe listen --forward-to localhost:4000/api/v1/stripe/webhook`.
-
-## 4. Configure the frontend
-
-Create `frontend/.env.local` only if the API is not at the default host:
-
+### Frontend: `frontend/.env`
+Create `frontend/.env`:
 ```env
 VITE_API_URL=http://localhost:4000
 ```
 
-The Axios client appends `/api`, resulting in `http://localhost:4000/api/v1/users/login`.
+---
 
-## 5. Run the applications
+## 4. Database Seeding (Optional)
+To populate the database with sample restaurants, menus, and dishes:
+```bash
+cd backend
+npm run seeder
+```
 
-Terminal 1:
+---
 
+## 5. Verification & Tests
+Run the automated test runner to ensure the environment is correctly configured:
+```bash
+cd backend
+npm test
+# Expected Output: Tests Finished: 9 Passed, 0 Failed
+```
+
+---
+
+## 6. Launching Application Servers
+
+Open two terminal windows:
+
+### Terminal 1: Backend
 ```bash
 cd backend
 npm run dev
+# Server running on http://localhost:4000
 ```
 
-Terminal 2:
-
+### Terminal 2: Frontend
 ```bash
 cd frontend
 npm run dev
+# Vite dev server running on http://localhost:5173
 ```
-
-Open `http://localhost:5173`.
-
-## 6. Seed data
-
-The current seeder imports `backend/data/foodItem.json`, but the repository sample JSON files are at the project root. Verify the import path and dataset before using it. The seeder deletes all existing food items before inserting data; use only with a disposable development database.
-
-## 7. Verification
-
-```bash
-cd frontend
-npm run build
-npm run lint
-cd ../backend
-node --check app.js
-node --check server.js
-```
-
-## 8. Troubleshooting
-
-| Symptom | Checks |
-| --- | --- |
-| CORS error | Confirm the exact frontend origin is in `FRONTEND_URL`. |
-| Database failure | Check `DB_LOCAL_URI`, network access, and credentials. |
-| Login does not persist | Confirm Axios `withCredentials`, backend CORS credentials, and cookie settings. |
-| Stripe checkout fails | Confirm test keys and valid item image URLs. |
-| Password reset fails | Verify Gmail SMTP settings, your App Password, `EMAIL_FROM`, and `RESET_URL_ORIGIN` / `FRONTEND_URL`. |
-| AI generation fails | Confirm `GROQ_API_KEY`; review analysis has a local fallback, food generation does not. |

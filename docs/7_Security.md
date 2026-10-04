@@ -1,63 +1,100 @@
-# Security and Operations Guide
+# 🛡️ SmartCraving Security Architecture & Hardening Guide
 
-## Secret handling
+[![Security Posture](https://img.shields.io/badge/Security-Defense_in_Depth-brightgreen?style=flat-square)](#)
+[![Compliance](https://img.shields.io/badge/OWASP-Top_10_Mitigated-blue?style=flat-square)](#)
 
-Never commit database URLs, JWT secrets, Stripe keys, Cloudinary secrets, SMTP passwords, or Groq keys. Store them in deployment secret management and inject environment variables. Any credentials previously placed in a tracked/local config file should be treated as compromised and rotated.
+---
 
-The frontend may receive only the Stripe publishable key. It must never receive `STRIPE_SECRET_KEY`, `JWT_SECRET`, database credentials, or provider API keys.
+## 1. Security Architecture (Defense-in-Depth)
 
-## Authentication hardening
+```mermaid
+graph TD
+    Request["Incoming HTTP Request"]
+    
+    subgraph Perimeter ["Layer 1: Perimeter & Transport Defense"]
+        RateLimit["Multi-Tier Rate Limiting\n[1000 req/15m DDoS protection]"]
+        CORS["Strict Dynamic CORS\n[Credentialed origin whitelist]"]
+        Helmet["Helmet HTTP Headers\n[nosniff, SAMEORIGIN, DNS prefetch]"]
+    end
 
-- Use secure, HTTP-only, same-site cookies in production.
-- Treat `NODE_ENV` case-insensitively when configuring production cookies; cross-origin deployments require `Secure` and `SameSite=None`.
-- Set a production-specific `JWT_SECRET` and reasonable token expiry.
-- Rate-limit login, signup, password reset, payment, coupon, review, and AI endpoints.
-- Avoid revealing whether an email exists from password recovery.
-- Require authentication for customer-owned writes.
+    subgraph Sanitization ["Layer 2: Payload Sanitization & Body Parsers"]
+        MongoSanitize["express-mongo-sanitize\n[Strips $ and . query operators]"]
+        HPP["HTTP Parameter Pollution\n[Protects array poisoning]"]
+        SizeLimits["Payload Limits\n[JSON: 5MB, URL-Encoded: 100kB]"]
+    end
 
-## Authorization hardening
+    subgraph Validation ["Layer 3: Input Validation Layer"]
+        IdValidator["ObjectId Pre-Validator\n[isMongoId check before Mongoose]"]
+        SchemaValidator["Schema Validators\n[Email syntax, password length, order shapes]"]
+    end
 
-Current authorization rules:
+    subgraph Auth ["Layer 4: Authentication & Authorization"]
+        DualAuth["Dual-Auth JWT\n[HTTP-Only Cookie + Bearer Fallback]"]
+        RoleGuard["RBAC Authorization\n[Customer vs Administrator]"]
+    end
 
-- Cart add/update/delete derive the user from the authenticated request rather than trusting a body-supplied user ID.
-- Coupon create/update/delete require `admin`; listing is public and validation requires an authenticated user.
-- Food metadata generation and administrative review analysis require `admin`; review-summary requests require authentication and may generate a missing summary for any authenticated user. Summary endpoints are rate-limited and reuse cached results.
-- Order details require the order owner or an administrator.
-- Restaurant and food reviews require authentication and are rate-limited. Review deletion requires `admin`.
+    subgraph Persistence ["Layer 5: Safe Persistence Layer"]
+        Bcrypt["Bcrypt Password Hashing (Salt = 10)"]
+        Atomic["Atomic Operations\n[$inc concurrency locking]"]
+    end
 
-Purchase access is restricted to `user` and `restaurant-owner` roles. Cart read/write, Stripe payment-session creation, and post-payment order creation all require authentication plus one of those roles. Cart controllers derive the target user from `req.user._id`; client-supplied `userId` values are ignored.
+    Request --> Perimeter
+    Perimeter --> Sanitization
+    Sanitization --> Validation
+    Validation --> Auth
+    Auth --> Persistence
+```
 
-The safe pattern is to call `protect`, derive ownership from `req.user.id`, then apply `authorizeRoles("admin")` where appropriate.
+---
 
-## Input and payment validation
+## 2. OWASP Top 10 Mitigations Implemented
 
-- Validate IDs, quantities, prices, ratings, and nested objects before database/provider calls.
-- Do not trust client-provided prices or images for payment; look up product data server-side.
-- Verify Stripe `payment_status`, customer ownership, and the unique session ID before creating an order.
-- Order creation is idempotent using the Stripe session ID. Signed Stripe webhooks finalize paid sessions when the browser success page is not reached; the success endpoint remains a safe retry/fallback.
-- Handle missing carts, shipping details, empty images, and duplicate success-page requests.
-- Add transaction or compensating logic for inventory updates and order creation.
-- Recheck stock at payment-session creation and order finalization; compensate stock when finalization fails.
+### 2.1 Injection Defense (A03:2021)
+- **NoSQL Operator Sanitization**: `express-mongo-sanitize` strips `$` and `.` operators from `req.body`, `req.query`, and `req.params`. Payloads like `{ "email": { "$gt": "" } }` are completely neutralized.
+- **ObjectId Validation**: `validateObjectId` runs before any MongoDB query. Malformed hexadecimal strings immediately return `400 Bad Request` rather than triggering internal database driver exceptions.
 
-## Request and browser hardening
+### 2.2 Broken Authentication (A07:2021)
+- **Dual-Auth Token Architecture**: Issues signed JWTs inside `httpOnly`, `secure` (in production), and `sameSite` cookies to prevent XSS exfiltration. For cross-domain payment redirects (e.g. Stripe Hosted Checkout), the frontend Axios client falls back to an `Authorization: Bearer <token>` header.
+- **Brute-Force Rate Limiting**: `/api/v1/users/login` and `/api/v1/users/signup` are limited to **15 attempts per 15 minutes per IP**.
 
-- Credentialed CORS accepts only exact configured frontend origins.
-- JSON payloads are limited to 5 MB, URL-encoded payloads to 100 KB, and uploads to 5 MB.
-- Public signup always creates a customer role.
-- The frontend uses dual authentication strategies: HTTP-only cookies in same-domain environments and `Authorization: Bearer <jwt>` headers stored in `localStorage` to preserve user sessions across third-party site redirects (e.g. Stripe Checkout across Vercel and Render).
-- Admin writes use explicit field allowlists and Mongoose validation.
+### 2.3 Broken Access Control (A01:2021)
+- **Role-Based Access Control (RBAC)**: All administrative routes (`/admin/*`, `/stores` write operations, `/item` write operations) require the `authorizeRoles("admin")` middleware.
+- **Customer Ownership Enforcement**: Order history queries (`/api/v1/eats/orders/me/myOrders`) strictly bind to `req.user.id`, preventing horizontal privilege escalation.
 
-## Deployment checklist
+### 2.4 Denial of Service & Resource Exhaustion (A04:2021)
+- **Multi-Tier Rate Limiting**:
+  - `globalLimiter`: 1000 requests per 15 minutes.
+  - `orderCreationLimiter`: 15 orders per 10 minutes on `/api/v1/eats/orders/new`.
+  - `cartLimiter`: 100 cart operations per 10 minutes.
+  - `aiLimiter`: 10 AI operations per 15 minutes.
 
-- Set `NODE_ENV=PRODUCTION` and production frontend origins.
-- Use HTTPS for frontend, API, and callbacks.
-- Restrict MongoDB network access and create a least-privileged DB user.
-- Configure structured logs without secrets or full payment sessions.
-- Add health checks for API, database, Stripe configuration, and AI availability.
-- Back up MongoDB and document restore procedures.
-- Run frontend build/lint and backend syntax checks in CI.
-- Review CORS origins and upload limits.
+### 2.5 Security Misconfiguration (A05:2021)
+- **HTTP Security Headers (`helmet`)**:
+  - `X-Content-Type-Options: nosniff` (stops MIME sniffing).
+  - `X-Frame-Options: SAMEORIGIN` (mitigates clickjacking).
+  - `X-DNS-Prefetch-Control: off`.
+- **Environment Isolation**: Production runs strictly enforce validated variables via `src/config/env.js`.
 
-## Observability
+---
 
-Record request method/path/status, latency, request ID, and sanitized error context. Track checkout-session failures, order-creation failures, authentication failures, and external AI/SMTP failures separately.
+## 3. Concurrency & Inventory Protection
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User1 as Customer A
+    actor User2 as Customer B
+    participant Server as ⚙️ Order Service
+    participant DB as 🗄️ MongoDB
+
+    Note over DB: Dish Stock = 1
+    User1->>Server: Checkout Dish (Qty: 1)
+    User2->>Server: Checkout Dish (Qty: 1)
+    Server->>DB: findOneAndUpdate({ _id, stock: { $gte: 1 } }, { $inc: { stock: -1 } })
+    DB-->>Server: User 1: Matched & Decremented (Stock: 0)
+    Server->>DB: findOneAndUpdate({ _id, stock: { $gte: 1 } }, { $inc: { stock: -1 } })
+    DB-->>Server: User 2: No Match Found (Stock is 0)
+    Server-->>User2: 400 Bad Request: "Dish is out of stock"
+```
+
+Inventory adjustments are performed atomically using conditional `$gte` criteria and `$inc` operators, completely eliminating double-ordering race conditions without expensive distributed database locking.
