@@ -10,8 +10,9 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose_7-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![Stripe](https://img.shields.io/badge/Stripe-Payments-008CDD?style=for-the-badge&logo=stripe&logoColor=white)](https://stripe.com/)
 [![Groq AI](https://img.shields.io/badge/Groq-Llama_3_AI-F05A28?style=for-the-badge)](https://groq.com/)
-[![Security](https://img.shields.io/badge/Security-Defense_in_Depth-green?style=for-the-badge&logo=shield)](./docs/7_Security.md)
-[![Tests](https://img.shields.io/badge/Smoke_Tests-9%2F9_Passing-brightgreen?style=for-the-badge&logo=checkmarx)](./backend/tests/smoke.test.js)
+[![Security](https://img.shields.io/badge/Security-Defense_in_Depth-green?style=for-the-badge&logo=shield)](./docs/4_Setup_and_Security.md)
+[![Tests](https://img.shields.io/badge/Smoke_Tests-10%2F10_Passing-brightgreen?style=for-the-badge&logo=checkmarx)](./backend/tests/smoke.test.js)
+
 
 <p align="center">
   A full-stack platform featuring <b>domain-driven modular architecture</b>, <b>third-party provider abstraction</b>, <b>sub-100ms multi-tier caching</b>, <b>route-level code splitting</b>, and <b>real-time AI sentiment analytics</b>.
@@ -219,15 +220,11 @@ FoodProject/
 │   └── package.json
 │
 └── docs/                            # Architectural & Engineering Documentation
-    ├── 1_PRD.md                     # Product Requirements Document
-    ├── 2_TRD.md                     # Technical Architecture & System Specs
-    ├── 3_Flow.md                    # Sequence Diagrams & System Lifecycles
-    ├── 4_API.md                     # Complete REST API Endpoint Reference
-    ├── 5_Data_Model.md              # MongoDB Schemas & Invariant Rules
-    ├── 6_Local_Setup.md             # Developer Quickstart & Env Configuration
-    ├── 7_Security.md                # Comprehensive Security Hardening Guide
-    ├── 8_CI_CD.md                   # Automated Testing & CI/CD Pipeline
-    └── MIGRATION_PROGRESS.md        # Architecture Evolution & Benchmark Report
+    ├── 1_PRD.md                     # Product Requirements & Core Invariants
+    ├── 2_Architecture_and_Flows.md  # Architecture, Providers & Sequence Diagrams
+    ├── 3_API_and_Data_Model.md      # REST API Reference & Data Models
+    ├── 4_Setup_and_Security.md      # Local Setup, Defense-in-Depth & CI/CD
+    └── 5_Performance_and_Optimizations.md # Performance Bottlenecks & k6 Benchmarks
 ```
 
 ---
@@ -236,15 +233,12 @@ FoodProject/
 
 | Guide | Description |
 | :--- | :--- |
-| 📋 [Product Requirements (PRD)](./docs/1_PRD.md) | Business goals, user personas, functional scope, and success metrics. |
-| 🛠️ [Technical Architecture (TRD)](./docs/2_TRD.md) | Domain architecture, provider patterns, caching strategy, and chunk optimization. |
-| 🔄 [System Flows & Sequences](./docs/3_Flow.md) | Visual sequence diagrams for authentication, order fulfillment, and AI sentiment analysis. |
-| 🔌 [API Reference & Specifications](./docs/4_API.md) | Complete REST API endpoints catalog, request/response payloads, and status codes. |
-| 🗄️ [Data Models & Schemas](./docs/5_Data_Model.md) | Mongoose schemas, relational references, indexing strategies, and database invariants. |
-| 💻 [Local Setup Guide](./docs/6_Local_Setup.md) | Environment variable configuration and local development instructions. |
-| 🛡️ [Security Hardening Guide](./docs/7_Security.md) | Detailed breakdown of defense-in-depth security, rate limiting, and NoSQL defense. |
-| 🚀 [CI/CD & Quality Automation](./docs/8_CI_CD.md) | GitHub Actions pipeline, linting, production builds, and smoke tests. |
-| 📈 [Migration Progress & Benchmarks](./docs/MIGRATION_PROGRESS.md) | Full record of backend/frontend transformations and performance benchmarks. |
+| 📋 [Product Requirements (PRD)](./docs/1_PRD.md) | Business goals, user personas, functional scope, and core invariants. |
+| 🛠️ [Architecture & System Flows](./docs/2_Architecture_and_Flows.md) | Domain architecture, provider patterns, chunk splitting, and sequence diagrams. |
+| 🔌 [API & Data Models](./docs/3_API_and_Data_Model.md) | Complete REST API reference, request/response envelopes, Mongoose schemas, and ERD. |
+| 🛡️ [Setup, Security & CI/CD](./docs/4_Setup_and_Security.md) | Local setup guide, 5-layer defense-in-depth, rate limiter specs, and GitHub Actions CI. |
+| ⚡ [Performance & Optimizations](./docs/5_Performance_and_Optimizations.md) | Detailed analysis of load test bottlenecks, code optimizations, and verified k6 benchmarks. |
+
 
 ---
 
