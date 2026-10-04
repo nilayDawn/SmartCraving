@@ -79,12 +79,14 @@ class AuthService {
       await notifier.sendPasswordReset(user, resetUrl);
       return { success: true, message: "Token sent to email!" };
     } catch (err) {
+      console.error("[ForgotPassword Error] Email delivery failed:", err?.message || err);
       user.passwordResetToken = undefined;
       user.passwordResetExpires = undefined;
       await user.save({ validateBeforeSave: false });
       throw new AppError("There was an error sending the email. Try again later!", 500);
     }
   }
+
 
   async resetPassword(token, password, passwordConfirm) {
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");

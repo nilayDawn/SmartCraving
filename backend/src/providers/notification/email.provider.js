@@ -8,39 +8,68 @@ const env = require("../../config/env");
 class EmailProvider extends NotificationProviderInterface {
   constructor() {
     super();
-    this.port = env.email.port;
-    this.transporter = nodemailer.createTransport({
-      host: env.email.host,
-      port: this.port,
-      secure: this.port === 465,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-      auth: {
-        user: env.email.username,
-        pass: env.email.password,
-      },
-    });
+    this.port = env.email.port || 465;
+
+    const isGmail =
+      (env.email.host && env.email.host.toLowerCase().includes("gmail")) ||
+      (env.email.service && env.email.service.toLowerCase() === "gmail") ||
+      (env.email.username && env.email.username.toLowerCase().includes("@gmail.com"));
+
+    // Using service: "gmail" or port 465 SSL avoids port 587 STARTTLS timeouts on cloud platforms like Render
+    const transportConfig = isGmail
+      ? {
+          service: "gmail",
+          auth: {
+            user: env.email.username,
+            pass: env.email.password,
+          },
+          tls: {
+            rejectUnauthorized: false,
+          },
+        }
+      : {
+          host: env.email.host,
+          port: this.port,
+          secure: this.port === 465,
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 15000,
+          auth: {
+            user: env.email.username,
+            pass: env.email.password,
+          },
+          tls: {
+            rejectUnauthorized: false,
+          },
+        };
+
+    this.transporter = nodemailer.createTransport(transportConfig);
     this.from = env.email.from;
   }
 
   async sendTemplateEmail({ to, subject, templateName, context }) {
-    const templatePath = path.resolve(__dirname, `../../templates/emails/${templateName}.pug`);
-    const html = pug.renderFile(templatePath, {
-      ...context,
-      subject,
-    });
+    try {
+      const templatePath = path.resolve(__dirname, `../../templates/emails/${templateName}.pug`);
+      const html = pug.renderFile(templatePath, {
+        ...context,
+        subject,
+      });
 
-    const mailOptions = {
-      from: this.from,
-      to,
-      subject,
-      html,
-      text: htmlToText.convert(html),
-    };
+      const mailOptions = {
+        from: this.from,
+        to,
+        subject,
+        html,
+        text: htmlToText.convert(html),
+      };
 
-    return this.transporter.sendMail(mailOptions);
+      return await this.transporter.sendMail(mailOptions);
+    } catch (err) {
+      console.error(`[EmailProvider Error] Failed sending ${templateName} to ${to}:`, err);
+      throw err;
+    }
   }
+
 
   async sendPasswordReset(user, resetUrl) {
     const firstName = (user.name || "Customer").split(" ")[0];
