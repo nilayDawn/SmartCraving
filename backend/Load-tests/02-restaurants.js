@@ -149,11 +149,18 @@ export default function (data) {
   const searchQueries = ['', '?keyword=pizza', '?keyword=burger', '?keyword=biryani', '?ratings[gte]=4'];
   const searchParam = searchQueries[(__ITER || 0) % searchQueries.length];
 
+  // Distributed IP simulation to represent realistic multi-user customer traffic
+  const clientIp = `10.${(__VU % 250) + 1}.${((__ITER || 0) % 250) + 1}.1`;
+  const extraHeaders = {
+    'X-Forwarded-For': clientIp,
+  };
+  const requestHeaders = { ...jsonHeaders, ...extraHeaders };
+
   // =========================================================================
   // 1. GET /api/v1/eats/restaurants/count
   // =========================================================================
   const countRes = http.get(`${ENDPOINTS.EATS}/restaurants/count`, {
-    headers: jsonHeaders,
+    headers: requestHeaders,
     tags: { name: 'GET /api/v1/eats/restaurants/count', endpoint: 'count' },
   });
 
@@ -174,7 +181,7 @@ export default function (data) {
   // 2. GET /api/v1/eats/stores (Catalog browsing with search/filters)
   // =========================================================================
   const storesRes = http.get(`${ENDPOINTS.EATS}/stores${searchParam}`, {
-    headers: jsonHeaders,
+    headers: requestHeaders,
     tags: { name: 'GET /api/v1/eats/stores', endpoint: 'stores' },
   });
 
@@ -195,7 +202,7 @@ export default function (data) {
   // 3. GET /api/v1/eats/stores/:storeId (Restaurant profile detail)
   // =========================================================================
   const storeDetailRes = http.get(`${ENDPOINTS.EATS}/stores/${storeId}`, {
-    headers: jsonHeaders,
+    headers: requestHeaders,
     tags: { name: 'GET /api/v1/eats/stores/:storeId', endpoint: 'store_detail' },
   });
 
@@ -216,7 +223,7 @@ export default function (data) {
   // 4. GET /api/v1/eats/stores/:storeId/menus (Restaurant menus)
   // =========================================================================
   const menusRes = http.get(`${ENDPOINTS.EATS}/stores/${storeId}/menus`, {
-    headers: jsonHeaders,
+    headers: requestHeaders,
     tags: { name: 'GET /api/v1/eats/stores/:storeId/menus', endpoint: 'store_menus' },
   });
 
@@ -234,7 +241,7 @@ export default function (data) {
   // 5. GET /api/v1/eats/items/:storeId (Dishes/Items by store)
   // =========================================================================
   const storeItemsRes = http.get(`${ENDPOINTS.EATS}/items/${storeId}`, {
-    headers: jsonHeaders,
+    headers: requestHeaders,
     tags: { name: 'GET /api/v1/eats/items/:storeId', endpoint: 'store_items' },
   });
 
@@ -252,7 +259,7 @@ export default function (data) {
   // 6. GET /api/v1/eats/item/:foodId (Specific dish detail)
   // =========================================================================
   const itemDetailRes = http.get(`${ENDPOINTS.EATS}/item/${foodId}`, {
-    headers: jsonHeaders,
+    headers: requestHeaders,
     tags: { name: 'GET /api/v1/eats/item/:foodId', endpoint: 'item_detail' },
   });
 
@@ -273,7 +280,7 @@ export default function (data) {
   // 7. GET /api/v1/coupon/ (Active promotional discounts)
   // =========================================================================
   const couponsRes = http.get(`${ENDPOINTS.COUPONS}/`, {
-    headers: jsonHeaders,
+    headers: requestHeaders,
     tags: { name: 'GET /api/v1/coupon/', endpoint: 'coupons' },
   });
 

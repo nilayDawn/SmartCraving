@@ -2,6 +2,7 @@ const Restaurant = require("../catalogue/models/restaurant.model");
 const FoodItem = require("../catalogue/models/foodItem.model");
 const AppError = require("../../core/errors/appError");
 const { getAIProvider } = require("../../providers/ai");
+const { getCacheProvider } = require("../../providers/cache");
 
 // In-Memory cache for AI Review sentiment analysis
 const reviewSentimentCache = new Map();
@@ -106,19 +107,34 @@ class AIService {
   }
 
   async getRestaurantReviewSummary(restaurantId) {
-    const restaurant = await Restaurant.findById(restaurantId);
+    const cache = getCacheProvider();
+    const cacheKey = `ai:summary:store:${restaurantId}`;
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      return {
+        cached: true,
+        aiData: cached,
+      };
+    }
+
+    const restaurant = await Restaurant.findById(
+      restaurantId,
+      "reviewSentiment reviewSummaryBullets reviewTopMentions reviews",
+    ).lean();
     if (!restaurant) {
       throw new AppError("Restaurant not found", 404);
     }
 
     if (restaurant.reviewSummaryBullets?.length || restaurant.reviewSentiment) {
+      const aiData = {
+        sentiment: restaurant.reviewSentiment,
+        summaryBullets: restaurant.reviewSummaryBullets || [],
+        topMentions: restaurant.reviewTopMentions || [],
+      };
+      await cache.set(cacheKey, aiData, 3600);
       return {
         cached: true,
-        aiData: {
-          sentiment: restaurant.reviewSentiment,
-          summaryBullets: restaurant.reviewSummaryBullets || [],
-          topMentions: restaurant.reviewTopMentions || [],
-        },
+        aiData,
       };
     }
 
@@ -128,28 +144,49 @@ class AIService {
       "restaurant",
     );
 
-    restaurant.reviewSentiment = aiData.sentiment;
-    restaurant.reviewSummaryBullets = aiData.summaryBullets;
-    restaurant.reviewTopMentions = aiData.topMentions;
-    await restaurant.save();
+    await Restaurant.updateOne(
+      { _id: restaurantId },
+      {
+        reviewSentiment: aiData.sentiment,
+        reviewSummaryBullets: aiData.summaryBullets,
+        reviewTopMentions: aiData.topMentions,
+      },
+    );
+
+    await cache.set(cacheKey, aiData, 3600);
 
     return { cached: false, aiData };
   }
 
   async getFoodReviewSummary(foodId) {
-    const food = await FoodItem.findById(foodId);
+    const cache = getCacheProvider();
+    const cacheKey = `ai:summary:food:${foodId}`;
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      return {
+        cached: true,
+        aiData: cached,
+      };
+    }
+
+    const food = await FoodItem.findById(
+      foodId,
+      "reviewSentiment reviewSummaryBullets reviewTopMentions reviews",
+    ).lean();
     if (!food) {
       throw new AppError("Food item not found", 404);
     }
 
     if (food.reviewSummaryBullets?.length || food.reviewSentiment) {
+      const aiData = {
+        sentiment: food.reviewSentiment,
+        summaryBullets: food.reviewSummaryBullets || [],
+        topMentions: food.reviewTopMentions || [],
+      };
+      await cache.set(cacheKey, aiData, 3600);
       return {
         cached: true,
-        aiData: {
-          sentiment: food.reviewSentiment,
-          summaryBullets: food.reviewSummaryBullets || [],
-          topMentions: food.reviewTopMentions || [],
-        },
+        aiData,
       };
     }
 
@@ -159,10 +196,16 @@ class AIService {
       "food item",
     );
 
-    food.reviewSentiment = aiData.sentiment;
-    food.reviewSummaryBullets = aiData.summaryBullets;
-    food.reviewTopMentions = aiData.topMentions;
-    await food.save();
+    await FoodItem.updateOne(
+      { _id: foodId },
+      {
+        reviewSentiment: aiData.sentiment,
+        reviewSummaryBullets: aiData.summaryBullets,
+        reviewTopMentions: aiData.topMentions,
+      },
+    );
+
+    await cache.set(cacheKey, aiData, 3600);
 
     return { cached: false, aiData };
   }
@@ -184,6 +227,7 @@ class AIService {
     restaurant.reviewTopMentions = [];
 
     await restaurant.save();
+    await getCacheProvider().del(`ai:summary:store:${restaurantId}`);
     return restaurant;
   }
 
@@ -208,6 +252,7 @@ class AIService {
     restaurant.reviewSummaryBullets = [];
     restaurant.reviewTopMentions = [];
     await restaurant.save();
+    await getCacheProvider().del(`ai:summary:store:${restaurantId}`);
 
     return restaurant;
   }
@@ -233,6 +278,7 @@ class AIService {
     food.reviewSummaryBullets = [];
     food.reviewTopMentions = [];
     await food.save();
+    await getCacheProvider().del(`ai:summary:food:${foodId}`);
 
     return food;
   }

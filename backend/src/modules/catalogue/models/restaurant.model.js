@@ -75,5 +75,8 @@ const restaurantSchema = new mongoose.Schema(
 
 restaurantSchema.index({ location: "2dsphere" });
 restaurantSchema.index({ address: "text" });
+restaurantSchema.index({ ratings: -1, numOfReviews: -1 });
+restaurantSchema.index({ name: 1 });
+restaurantSchema.index({ isVeg: 1 });
 
 module.exports = mongoose.model("Restaurant", restaurantSchema);

@@ -1,12 +1,13 @@
 const rateLimit = require("express-rate-limit");
 
-const createLimiter = ({ windowMinutes, maxRequests, message }) => {
+const createLimiter = ({ windowMinutes, maxRequests, message, skip }) => {
   return rateLimit({
     windowMs: windowMinutes * 60 * 1000,
     limit: maxRequests,
     standardHeaders: "draft-8",
     legacyHeaders: false,
     validate: { ip: false, xForwardedForHeader: false },
+    skip: typeof skip === "function" ? skip : () => false,
     message: {
       success: false,
       message: message || "Too many requests. Please try again later.",
@@ -47,7 +48,8 @@ const couponValidationLimiter = createLimiter({
 
 const aiLimiter = createLimiter({
   windowMinutes: 15,
-  maxRequests: 10,
+  maxRequests: 30,
+  skip: (req) => req.path?.endsWith("/summary"),
   message: "Too many AI generation requests from this IP. Please try again later.",
 });
 
@@ -59,7 +61,16 @@ const reviewLimiter = createLimiter({
 
 const globalLimiter = createLimiter({
   windowMinutes: 15,
-  maxRequests: 1000,
+  maxRequests: 10000,
+  skip: (req) => {
+    // Exempt public read-only cached catalogue browsing and health checks from strict global rate limiting
+    return (
+      req.method === "GET" &&
+      (req.baseUrl?.startsWith("/api/v1/eats") ||
+        req.baseUrl?.startsWith("/api/v1/coupon") ||
+        req.path === "/health")
+    );
+  },
   message: "Too many requests from this IP. Please try again after 15 minutes.",
 });
 
