@@ -140,19 +140,19 @@ The test executed a controlled verification of 4 complete cart lifecycles across
 
 ---
 
-## 11. Resume / GitHub Metrics
+## 11. Important Metrics
 
-### Resume-Ready Metrics
+### Important Metrics
 ```text
 2 VUs | 25 requests | 3.69 req/s | 0.00% errors | 898.30ms p95 (Global) | 402.66ms p95 (Add-to-Cart) | 100% check pass rate
 ```
 
-### Resume Bullet
+### Important Bullet
 > Benchmarked customer cart workflows with k6, validating atomic item upserts, quantity updates, single-restaurant constraints, and document cleanup with 100% functional check pass rate and sub-405ms endpoint p95 latency.
 
 ---
 
-## 12. GitHub Performance Snapshot
+## 12. Quick Performance Snapshot
 
 | Test | Max VUs | Requests | Throughput | Error Rate | p95 Latency | Result |
 | :--- | ---: | ---: | ---: | ---: | ---: | :--- |

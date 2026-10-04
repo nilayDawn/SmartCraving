@@ -32,3 +32,21 @@
   1. Offloading password hashing to native background threads resolved the event loop head-of-line blocking so `/logout` and other I/O routes respond immediately.
   2. Implemented user session caching in the `protect` middleware ([backend/src/core/middlewares/auth.middleware.js](file:///home/nilaydawn/Desktop/WebDevProj/FoodProject/backend/src/core/middlewares/auth.middleware.js#L23-L44)) using the in-memory cache provider (`user:session:<id>` with a 60-second TTL). This avoids repeated roundtrips across the internet to MongoDB Atlas for profile and protected requests.
   3. Added automatic cache invalidation in [backend/src/modules/auth/auth.service.js](file:///home/nilaydawn/Desktop/WebDevProj/FoodProject/backend/src/modules/auth/auth.service.js) so any profile or password update immediately flushes the cached session.
+
+---
+
+## VERIFIED TEST RESULTS (k6)
+
+| Metric | Before Optimization | After Optimization | Improvement |
+| :--- | :---: | :---: | :---: |
+| **Status** | ❌ FAIL | ✅ **PASS** | **All SLAs Satisfied** |
+| **Concurrency** | 50 VUs | 50 VUs | Stable peak load |
+| **Total Requests** | 1,171 reqs | **17,246 reqs** | **14.7× more throughput** |
+| **Requests / sec** | 5.48 req/s | **86.07 req/s** | **15.7× faster processing** |
+| **Error Rate** | 0.00% | **0.00%** | 0 dropped requests |
+| **Global p95 Latency** | 15,921.72 ms | **510.29 ms** | **31.2× latency reduction** |
+| **`POST /signup` p95** | 25,068.44 ms | **690.67 ms** | **36.3× faster** |
+| **`POST /login` p95** | 14,400.05 ms | **397.22 ms** | **36.2× faster** |
+| **`GET /users/me` p95** | 4,745.01 ms | **73.14 ms** | **64.9× faster** |
+| **`GET /users/logout` p95**| 2,643.86 ms | **3.25 ms** | **813× faster** |
+| **Max Tail Latency** | 49,185.26 ms | **914.71 ms** | **Sub-second maximum** |

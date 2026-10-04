@@ -1,86 +1,106 @@
-// SmartCraving - An AI-Powered Food Ordering and Restaurant Intelligence Platform
-// Copyright (C) 2026  Nilay Dawn
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Expand libuv worker threadpool for native crypto / bcrypt operations
-process.env.UV_THREADPOOL_SIZE = process.env.UV_THREADPOOL_SIZE || "16";
-
-const cluster = require("cluster");
-const os = require("os");
+const cluster = require("node:cluster");
+const os = require("node:os");
+const process = require("node:process");
+const mongoose = require("mongoose");
 const env = require("./src/config/env");
 const logger = require("./src/core/utils/logger");
 
-const isClusterEnabled = process.env.CLUSTER === "true";
-const numWorkers = parseInt(process.env.WORKERS, 10) || os.cpus().length;
+// 1. Calculate available cores safely (container/cgroup aware)
+const availableCores = os.availableParallelism
+  ? os.availableParallelism()
+  : os.cpus().length;
+logger.debug(`[Cluster] Available logical cores: ${availableCores}`);
+const numWorkers = env.cluster?.workers || availableCores;
+logger.debug(`[Cluster] Configured number of workers: ${numWorkers}`);
 
-if (isClusterEnabled && cluster.isPrimary) {
-  logger.info(`[Cluster] Primary process ${process.pid} is running. Forking ${numWorkers} workers...`);
+// Calculate worker-level threadpool size (default 4 to 8 is optimal per worker process)
+const calculatedPoolSize = Math.min(128, Math.max(4, Math.floor(availableCores / 2) || 4));
+process.env.UV_THREADPOOL_SIZE = (
+  env.uvThreadpoolSize || calculatedPoolSize
+).toString();
+logger.debug(`[Cluster] Configured UV_THREADPOOL_SIZE: ${process.env.UV_THREADPOOL_SIZE}`);
 
+// PRIMARY PROCESS (Supervisor)
+
+if (env.cluster?.enabled && cluster.isPrimary) {
+  console.log(`[Cluster] Available logical cores: ${availableCores}`);
+  console.log(`[Cluster] Primary PID ${process.pid} is starting ${numWorkers} workers...`);
+  console.log(`[Cluster] Configured UV_THREADPOOL_SIZE per worker: ${process.env.UV_THREADPOOL_SIZE}`);
+
+  // Fork child workers
   for (let i = 0; i < numWorkers; i++) {
-    cluster.fork();
+    cluster.fork({ UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE });
   }
 
+  // Graceful worker recovery
   cluster.on("exit", (worker, code, signal) => {
-    logger.warn(`[Cluster] Worker ${worker.process.pid} exited (${signal || code}). Spawning replacement...`);
-    cluster.fork();
+    console.warn(
+      `[Cluster] Worker ${worker.process.pid} died (code: ${code}, signal: ${signal}).`,
+    );
+
+    // Guard against instant crash-loops: delay respawn by 1s
+    if (code !== 0 && !worker.exitedAfterDisconnect) {
+      console.log("[Cluster] Spawning replacement worker in 1000ms...");
+      setTimeout(() => {
+        cluster.fork({ UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE });
+      }, 1000);
+    }
   });
 
-  const shutdownCluster = () => {
-    logger.info("[Cluster] Shutting down all workers...");
+  // Handle termination signals in primary to shut down workers cleanly
+  const shutdown = (sig) => {
+    console.log(`\n[Cluster] Received ${sig}. Terminating all workers...`);
     for (const id in cluster.workers) {
-      cluster.workers[id].process.kill();
+      cluster.workers[id]?.kill(sig);
     }
     process.exit(0);
   };
 
-  process.on("SIGTERM", shutdownCluster);
-  process.on("SIGINT", shutdownCluster);
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+
 } else {
-  const app = require("./src/app");
-  const { connectDatabase, disconnectDatabase } = require("./src/core/database");
+  
+  // WORKER PROCESS (HTTP + DB)
+  
+  const app = require("./app");
 
-  // Handle uncaught exceptions
-  process.on("uncaughtException", (err) => {
-    logger.error(`[Fatal] Uncaught Exception: ${err.message}`);
-    logger.error(err.stack);
-    process.exit(1);
-  });
+  let server;
 
-  // Connect to persistence database
-  connectDatabase();
+  // Connect to MongoDB per worker process
+  mongoose
+    .connect(env.db.uri)
+    .then(() => {
+      console.log(`[Database] Worker ${process.pid} connected to MongoDB`);
 
-  // Start HTTP Server
-  const server = app.listen(env.port, () => {
-    logger.success(
-      `[Server] SmartCraving Backend (PID: ${process.pid}) running on PORT: ${env.port} in ${env.nodeEnv} mode.`,
-    );
-  });
-
-  // Handle unhandled Promise rejections
-  process.on("unhandledRejection", (err) => {
-    logger.error(`[Fatal] Unhandled Promise Rejection: ${err.message}`);
-    server.close(() => {
-      logger.info("[Server] Closing database connection...");
-      disconnectDatabase().finally(() => {
-        process.exit(1);
+      // Workers share the same port 4000 via Node's Round-Robin (rr) handle
+      server = app.listen(env.port, () => {
+        console.log(
+          `[Server] Worker ${process.pid} listening on port ${env.port} (${env.nodeEnv})`,
+        );
       });
+    })
+    .catch((err) => {
+      console.error(`[Database Error] Worker ${process.pid} failed to connect:`, err.message);
+      process.exit(1);
     });
+
+  // Catch unexpected worker errors
+  process.on("unhandledRejection", (err) => {
+    console.error(`[Fatal] Worker ${process.pid} unhandled rejection:`, err);
+    if (server) {
+      server.close(() => process.exit(1));
+    } else {
+      process.exit(1);
+    }
   });
 
-  // Graceful shutdown on termination signals
-  const gracefulShutdown = (signal) => {
-    logger.info(`[Server] Received ${signal}. Starting graceful shutdown...`);
-    server.close(async () => {
-      logger.success("[Server] HTTP server closed.");
-      await disconnectDatabase();
-      process.exit(0);
-    });
-  };
-
-  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+  process.on("uncaughtException", (err) => {
+    console.error(`[Fatal] Worker ${process.pid} uncaught exception:`, err);
+    if (server) {
+      server.close(() => process.exit(1));
+    } else {
+      process.exit(1);
+    }
+  });
 }

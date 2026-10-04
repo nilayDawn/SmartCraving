@@ -139,19 +139,19 @@ Across the load staging profile:
 
 ---
 
-## 11. Resume / GitHub Metrics
+## 11. Important Metrics
 
-### Resume-Ready Metrics
+### Important Metrics
 ```text
 100 VUs | 20,034 requests | 77.00 req/s | 0.00% errors | 43.30ms p95 (Catalogue) | 1,142.13ms p95 (Global) | 100% check pass rate
 ```
 
-### Resume Bullet
+### Important Bullet
 > Evaluated promotional coupon validation APIs with k6 at 100 concurrent VUs across 20,034 requests (77 req/s), proving 100% functional check accuracy and sub-45ms cached catalogue retrieval while benchmarking compound indexing bottlenecks under peak validation traffic.
 
 ---
 
-## 12. GitHub Performance Snapshot
+## 12. Quick Performance Snapshot
 
 | Test | Max VUs | Requests | Throughput | Error Rate | p95 Latency | Result |
 | :--- | ---: | ---: | ---: | ---: | ---: | :--- |

@@ -136,19 +136,19 @@ Across 200+ seconds and 50 concurrent VUs:
 
 ---
 
-## 11. Resume / GitHub Metrics
+## 11. Important Metrics
 
-### Resume-Ready Metrics
+### Important Metrics
 ```text
 50 VUs | 8,909 requests | 44.45 req/s | 0.00% errors | 190.36ms p95 | 100% check pass rate
 ```
 
-### Resume Bullet
+### Important Bullet
 > Benchmarked payment endpoints with k6 up to 50 concurrent VUs across 8,909 requests at 44.5 req/s, achieving 0% error rate and sub-195ms p95 latency while decoupling Stripe sandbox checkout sessions to avoid third-party API throttling.
 
 ---
 
-## 12. GitHub Performance Snapshot
+## 12. Quick Performance Snapshot
 
 | Test | Max VUs | Requests | Throughput | Error Rate | p95 Latency | Result |
 | :--- | ---: | ---: | ---: | ---: | ---: | :--- |

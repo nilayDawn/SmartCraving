@@ -64,6 +64,11 @@ const env = {
     apiKey: (process.env.GROQ_API_KEY || "").trim(),
     model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
   },
+  uvThreadpoolSize: parseInt(process.env.UV_THREADPOOL_SIZE, 10) || 16,
+  cluster: {
+    enabled: process.env.CLUSTER === "true",
+    //workers: parseInt(process.env.WORKERS, 10) || require("os").cpus().length,
+  },
 };
 
 module.exports = env;

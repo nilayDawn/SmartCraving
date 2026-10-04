@@ -24,47 +24,48 @@ const aiRoutes = require("./modules/ai/ai.routes");
 
 const app = express();
 
-// Trust reverse proxy (Render, Vercel, Nginx) for rate-limit IP detection
-app.set("trust proxy", 1);   // trust first proxy, so that req.ip returns the correct client IP address when behind a reverse proxy
+// Trust reverse proxy for client IP resolution behind load balancers/CDNs
+app.set("trust proxy", 1);
 
-// Set security HTTP headers (disable crossOriginResourcePolicy for Cloudinary asset delivery)
+// Security HTTP headers
 app.use(
   helmet({
-    crossOriginResourcePolicy: false,// Prevents blocking of Cloudinary images or other external assets
-    contentSecurityPolicy: false, // Prevents interfering with external CDNs or APIs in hybrid dev
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: false,
   }),
 );
 
-// Apply credentialed CORS policy before body parsers and routes
+// Apply credentialed CORS policy before parsing request bodies
 app.use(corsMiddleware);
 
-// Stripe signed raw webhook must run before global express.json()
+// Stripe webhook requires the raw Buffer to verify signature
 app.post(
   "/api/v1/stripe/webhook",
   express.raw({ type: "application/json", limit: "1mb" }),
   paymentController.stripeWebhook,
 );
 
-// Compress all HTTP response bodies (> 1kb)
+// Compress HTTP responses > 1kb
 app.use(compression());
 
-// Standard body and cookie parsers
-app.use(express.json({ limit: "5mb" })); // Limit JSON payloads to 5MB to prevent abuse and DoS attacks
-app.use(express.urlencoded({ extended: true, limit: "100kb" })); // Limit URL-encoded payloads to 100KB
-app.use(cookieParser()); // Parse cookies for authentication and session management
+// Body and cookie parsers
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "100kb" }));
+app.use(cookieParser());
 
-// Data sanitization against NoSQL query injection (strips $ and . from req.body, req.query, req.params),so that malicious users cannot inject MongoDB operators into queries
+// NoSQL query injection protection (strips $ and .)
 app.use(mongoSanitize());
 
-// Prevent HTTP parameter pollution, for example, if a user sends multiple query parameters with the same name, only the last one will be used. This prevents attackers from exploiting duplicate parameters to bypass security checks or manipulate application logic.
+// HTTP parameter pollution protection
 app.use(hpp());
 
-// Global API rate limiter across all /api routes
+// Global API rate limiting
 app.use("/api", globalLimiter);
 
+// Multipart form uploads (5MB ceiling)
 app.use(
   fileUpload({
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 }, // 5MB, 1 file
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
     abortOnLimit: true,
     createParentPath: false,
   }),
@@ -75,11 +76,12 @@ app.get("/health", (req, res) => {
   res.status(200).json({
     status: "success",
     message: "Server is healthy",
+    workerPid: process.pid,
     timestamp: new Date().toISOString(),
   });
 });
 
-// Domain API Routing (Preserving exact 100% backward-compatible /api/v1 contracts)
+// Domain Routing (/api/v1)
 app.use("/api/v1/users", authRoutes);
 app.use("/api/v1/eats/cart", cartRoutes);
 app.use("/api/v1/eats/orders", orderRoutes);
@@ -88,8 +90,7 @@ app.use("/api/v1", paymentRoutes);
 app.use("/api/v1/coupon", promotionRoutes);
 app.use("/api/v1/ai", aiRoutes);
 
-// Browser redirect for password reset links: if a user clicks a reset link that lands on the backend,
-// redirect them directly to the frontend React form (/users/resetPassword/:token)
+// Password reset link redirect to frontend React application
 app.get(
   ["/users/resetPassword/:token", "/api/v1/users/resetPassword/:token"],
   (req, res) => {
@@ -98,7 +99,7 @@ app.get(
   },
 );
 
-// Fallback 404 for unhandled routes
+// Unhandled route fallback
 app.all("*", (req, res) => {
   res.status(404).json({
     status: "fail",
@@ -107,7 +108,7 @@ app.all("*", (req, res) => {
   });
 });
 
-// Centralized Error Handling Middleware
+// Centralized error handling
 app.use(errorMiddleware);
 
 module.exports = app;

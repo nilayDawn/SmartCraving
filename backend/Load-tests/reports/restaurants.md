@@ -176,19 +176,19 @@
 
 ---
 
-## 11. Resume / GitHub Metrics
+## 11. Important Metrics
 
-### Resume-Ready Metrics
+### Important Metrics
 ```text
 100 VUs | 74,217 requests | 246.60 req/s | 89.87% errors (Rate Limiting) | 50.25ms p95
 ```
 
-### Resume Bullet
+### Important Bullet
 > Stress-tested public restaurant catalogue APIs with k6 up to 100 concurrent VUs (74,217 requests at 246 req/s), validating Express rate-limiting boundary thresholds and identifying compound indexing opportunities on store listing routes.
 
 ---
 
-## 12. GitHub Performance Snapshot
+## 12. Quick Performance Snapshot
 
 | Test | Max VUs | Requests | Throughput | Error Rate | p95 Latency | Result |
 | :--- | ---: | ---: | ---: | ---: | ---: | :--- |

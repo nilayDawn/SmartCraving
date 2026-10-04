@@ -151,19 +151,19 @@ Across the test lifecycle:
 
 ---
 
-## 11. Resume / GitHub Metrics
+## 11. Important Metrics
 
-### Resume-Ready Metrics
+### Important Metrics
 ```text
 50 VUs | 942 requests | 13.02 req/s | 1.49% errors | 634.74ms p95 | 317.87ms p95 (MyOrders) | 98.48% check pass rate
 ```
 
-### Resume Bullet
+### Important Bullet
 > Load-tested orders API with k6 across 50 concurrent VUs and 942 requests, maintaining a 98.5% check pass rate, <2% error rate, and sub-635ms p95 latency while decoupling state-changing order creation to preserve Stripe sandboxes and product inventory.
 
 ---
 
-## 12. GitHub Performance Snapshot
+## 12. Quick Performance Snapshot
 
 | Test | Max VUs | Requests | Throughput | Error Rate | p95 Latency | Result |
 | :--- | ---: | ---: | ---: | ---: | ---: | :--- |
