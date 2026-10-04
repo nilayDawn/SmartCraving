@@ -1,22 +1,21 @@
 const cors = require("cors");
 const env = require("../../config/env");
 
+
 const envOrigins = (env.frontendUrl || "")
   .split(",")
   .map((origin) => origin.trim().replace(/\/$/, ""))
   .filter(Boolean);
 
+
 const defaultOrigins = env.isProduction
-  ? []
+  ? envOrigins
   : ["http://localhost:5173", "http://localhost:3000"];
 
-const vercelOrigins = [
-  "https://smart-craving-six.vercel.app",
-  "https://smart-craving-git-main-nilay-dawn.vercel.app",
-  "https://smart-craving-h6c3q6i1e-nilay-dawn.vercel.app",
-];
 
-const allowedOrigins = Array.from(new Set([...envOrigins, ...defaultOrigins, ...vercelOrigins]));
+
+const allowedOrigins = Array.from(new Set([...defaultOrigins]));
+
 
 const corsOptions = {
   origin: (origin, callback) => {
