@@ -266,8 +266,8 @@ export function cachedAiScenario(data) {
  * without overloading the external Groq API or triggering rate limits.
  */
 export function uncachedAiScenario(data) {
-  // Use dedicated IP for uncached AI generation
-  const clientIp = `10.205.${(__VU % 50) + 1}.${((__ITER || 0) % 50) + 1}.1`;
+  // Use dedicated IP for uncached AI generation (valid 4-octet IPv4)
+  const clientIp = `10.205.${(__VU % 50) + 1}.${((__ITER || 0) % 250) + 1}`;
   const extraHeaders = {
     'X-Forwarded-For': clientIp,
   };

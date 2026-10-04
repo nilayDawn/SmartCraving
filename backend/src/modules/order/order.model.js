@@ -112,4 +112,10 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Compound indexes for performant query lookups and sorting
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ restaurant: 1, createdAt: -1 });
+orderSchema.index({ orderStatus: 1 });
+orderSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model("Order", orderSchema);

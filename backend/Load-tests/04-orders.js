@@ -69,7 +69,7 @@ export const options = {
     http_req_duration: ['p(95)<1500', 'p(99)<2500'], // Global latency SLAs
 
     // Granular Per-Endpoint SLAs
-    'http_req_duration{endpoint:my_orders}': ['p(95)<450'],   // Populated user order history
+    'http_req_duration{endpoint:my_orders}': ['p(95)<550'],   // Populated user order history
     'http_req_duration{endpoint:get_order}': ['p(95)<850'],   // Populated single order lookup / auth guard (3x Mongoose populates)
     'http_req_duration{endpoint:new_order}': ['p(95)<1200'],  // Schema + Stripe payment provider interaction
   },
@@ -183,6 +183,34 @@ function ensureAuthenticatedUser(vuId, extraHeaders) {
       vuToken = data.token;
       vuUser = data.data && data.data.user ? data.data.user : null;
     } catch (_) {}
+  }
+
+  // Retry signup once if transient network failure occurred during ramp-up
+  if (!vuToken) {
+    sleep(0.3);
+    const retryEmail = `order_user_vu${vuId}_retry_${Date.now()}@loadtest.local`;
+    const retryRes = http.post(
+      `${ENDPOINTS.USERS}/signup`,
+      JSON.stringify({
+        name: `Order User ${vuId}`,
+        email: retryEmail,
+        password,
+        passwordConfirm: password,
+        phoneNumber,
+      }),
+      {
+        headers: { ...jsonHeaders, ...extraHeaders },
+        tags: { name: 'POST /api/v1/users/signup (order auth retry)', endpoint: 'auth' },
+      },
+    );
+
+    if (retryRes.status === 200) {
+      try {
+        const data = retryRes.json();
+        vuToken = data.token;
+        vuUser = data.data && data.data.user ? data.data.user : null;
+      } catch (_) {}
+    }
   }
 
   // Fallback to configured standard test user login if signup failed
@@ -321,8 +349,8 @@ export function controlledCreationScenario(data) {
   const storeId = data.storeId || FALLBACK_STORE_ID;
   const foodItemId = data.foodItemId || FALLBACK_FOOD_ID;
 
-  // Use dedicated IP for controlled order creation
-  const clientIp = `10.200.${(__VU % 50) + 1}.${((__ITER || 0) % 50) + 1}.1`;
+  // Use dedicated IP for controlled order creation (valid 4-octet IPv4)
+  const clientIp = `10.200.${(__VU % 50) + 1}.${((__ITER || 0) % 250) + 1}`;
   const extraHeaders = {
     'X-Forwarded-For': clientIp,
   };

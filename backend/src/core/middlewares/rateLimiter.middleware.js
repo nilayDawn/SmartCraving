@@ -6,6 +6,7 @@ const createLimiter = ({ windowMinutes, maxRequests, message }) => {
     limit: maxRequests,
     standardHeaders: "draft-8",
     legacyHeaders: false,
+    validate: { ip: false, xForwardedForHeader: false },
     message: {
       success: false,
       message: message || "Too many requests. Please try again later.",

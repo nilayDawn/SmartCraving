@@ -293,8 +293,8 @@ export function controlledPaymentScenario(data) {
   const storeId = data.storeId || FALLBACK_STORE_ID;
   const foodItemId = data.foodItemId || FALLBACK_FOOD_ID;
 
-  // Use dedicated IP for controlled payment processing
-  const clientIp = `10.201.${(__VU % 50) + 1}.${((__ITER || 0) % 50) + 1}.1`;
+  // Use dedicated IP for controlled payment processing (valid 4-octet IPv4)
+  const clientIp = `10.201.${(__VU % 50) + 1}.${((__ITER || 0) % 250) + 1}`;
   const extraHeaders = {
     'X-Forwarded-For': clientIp,
   };

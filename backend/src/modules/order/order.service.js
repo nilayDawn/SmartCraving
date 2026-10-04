@@ -106,8 +106,9 @@ class OrderService {
   async getOrderById(orderId, currentUser) {
     const order = await Order.findById(orderId)
       .populate("user", "name email")
-      .populate("restaurant")
-      .populate("orderItems.fooditem", "name stock images price");
+      .populate("restaurant", "name location images phone")
+      .populate("orderItems.fooditem", "name stock images price")
+      .lean();
 
     if (!order) {
       throw new AppError("No Order found with this ID", 404);
@@ -124,8 +125,9 @@ class OrderService {
   async getUserOrders(userId) {
     return Order.find({ user: userId })
       .populate("user", "name email")
-      .populate("restaurant")
-      .sort({ createdAt: -1 });
+      .populate("restaurant", "name location images phone")
+      .sort({ createdAt: -1 })
+      .lean();
   }
 
   async getAllOrders() {
@@ -133,7 +135,8 @@ class OrderService {
       .populate("user", "name email")
       .populate("restaurant", "name")
       .populate("orderItems.fooditem", "name stock images price")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     const totalAmount = orders.reduce((sum, order) => sum + (order.finalTotal || 0), 0);
 
