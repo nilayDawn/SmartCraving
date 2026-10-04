@@ -42,9 +42,10 @@ const paymentLimiter = createLimiter({
 
 const couponValidationLimiter = createLimiter({
   windowMinutes: 15,
-  maxRequests: 30,
+  maxRequests: 60,
   message: "Too many coupon validation requests. Please try again later.",
 });
+
 
 const aiLimiter = createLimiter({
   windowMinutes: 15,

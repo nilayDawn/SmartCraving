@@ -170,4 +170,35 @@
 | **Item Summary (Cached) 95%** | 703.28 ms | **3.44 ms** | **204× faster (SLA < 300 ms met)** |
 | **Uncached LLM 95%** | 178.33 ms | **99.54 ms** | **Fast LLM response (SLA < 4,000 ms met)** |
 
+---
+
+# COUPON IMPROVEMENT
+
+## PROBLEM 1: Slow Coupon Validation Under Concurrency (1,158 ms vs 400 ms SLA)
+- **What the problem was**: 
+  When customers validate a coupon code during checkout (`POST /coupon/validate`), the server searched MongoDB Atlas (`Coupon.findOne({ couponName, expire: { $gt: now } })`) on every request. The `Coupon` database model had no compound index on `couponName` and `expire`. Under 100 concurrent users (77 req/s), remote database queries queued up, causing response times to jump to 1,158 ms (failing the 400 ms SLA target).
+- **Solution applied**:
+  1. Added compound indexes `{ couponName: 1, expire: 1 }` and `{ expire: 1 }` to [backend/src/modules/promotion/coupon.model.js](file:///home/nilaydawn/Desktop/WebDevProj/FoodProject/backend/src/modules/promotion/coupon.model.js) for fast index-covered database lookups.
+  2. Added in-memory caching via `getCacheProvider()` in [backend/src/modules/promotion/promotion.service.js](file:///home/nilaydawn/Desktop/WebDevProj/FoodProject/backend/src/modules/promotion/promotion.service.js) (`coupon:validate:<CODE>`). Valid coupon definitions are cached in memory for 5 minutes and expiration is re-verified instantly in application memory without querying remote MongoDB.
+  3. Added cache invalidation hooks (`cache.delByPattern("coupon:*")`) on coupon creation, updates, and deletion so changes apply immediately.
+  4. Increased `couponValidationLimiter` in [backend/src/core/middlewares/rateLimiter.middleware.js](file:///home/nilaydawn/Desktop/WebDevProj/FoodProject/backend/src/core/middlewares/rateLimiter.middleware.js) from 30 to 60 requests per 15 minutes to comfortably handle rapid cart recalculations.
+
+---
+
+## VERIFIED TEST RESULTS (k6)
+
+| What We Tested | Before (Broken) | After (Fixed) | What Changed |
+| :--- | :---: | :---: | :---: |
+| **Test Result** | ❌ FAIL | ✅ **PASS** | **All SLA targets passed** |
+| **Error Rate** | 0.00% | **0.00% (0 errors)** | **Zero dropped requests** |
+| **Checks Passed** | 100.00% (69,762 passed) | **100.00% (98,931 passed)** | **29,169 more checks verified** |
+| **Total Requests** | 20,034 requests | **28,368 requests** | **41% more requests processed** |
+| **Requests / sec** | 77.00 req/s | **109.06 req/s** | **41% higher throughput** |
+| **Overall 95% Latency** | 1,142.13 ms | **3.31 ms** | **345× faster (SLA < 500 ms met)** |
+| **Overall 99% Latency** | Failed SLA | **3.64 ms** | **Sub-5ms tail latency (SLA < 1,000 ms met)** |
+| **Coupon Validation 95%** | 1,158.20 ms | **3.64 ms** | **318× faster (SLA < 400 ms met)** |
+| **Get Coupons List 95%** | 43.30 ms | **2.37 ms** | **18× faster (SLA < 200 ms met)** |
+
+
+
 

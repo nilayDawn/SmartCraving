@@ -1,5 +1,6 @@
 const Coupon = require("./coupon.model");
 const AppError = require("../../core/errors/appError");
+const { getCacheProvider } = require("../../providers/cache");
 
 class PromotionService {
   buildCouponPayload(body) {
@@ -51,12 +52,26 @@ class PromotionService {
     }
 
     const code = String(couponCode).trim().toUpperCase();
-    const coupon = await Coupon.findOne({
-      couponName: code,
-      expire: { $gt: new Date() },
-    }).lean();
+    const cache = getCacheProvider();
+    const cacheKey = `coupon:validate:${code}`;
+
+    let coupon = await cache.get(cacheKey);
 
     if (!coupon) {
+      coupon = await Coupon.findOne({
+        couponName: code,
+        expire: { $gt: new Date() },
+      }).lean();
+
+      if (!coupon) {
+        throw new AppError("Invalid or expired coupon code.", 404);
+      }
+
+      await cache.set(cacheKey, coupon, 300);
+    }
+
+    if (new Date(coupon.expire) <= new Date()) {
+      await cache.del(cacheKey);
       throw new AppError("Invalid or expired coupon code.", 404);
     }
 
@@ -76,7 +91,10 @@ class PromotionService {
 
   async createCoupon(body) {
     const payload = this.buildCouponPayload(body);
-    return Coupon.create(payload);
+    const coupon = await Coupon.create(payload);
+    const cache = getCacheProvider();
+    await cache.delByPattern("coupon:*");
+    return coupon;
   }
 
   async getAllCoupons() {
@@ -93,6 +111,8 @@ class PromotionService {
     if (!coupon) {
       throw new AppError("No Coupon found with that ID", 404);
     }
+    const cache = getCacheProvider();
+    await cache.delByPattern("coupon:*");
     return coupon;
   }
 
@@ -101,6 +121,8 @@ class PromotionService {
     if (!coupon) {
       throw new AppError("No coupon found with given Id", 404);
     }
+    const cache = getCacheProvider();
+    await cache.delByPattern("coupon:*");
     return true;
   }
 }
