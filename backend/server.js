@@ -9,22 +9,34 @@ const logger = require("./src/core/utils/logger");
 const availableCores = os.availableParallelism
   ? os.availableParallelism()
   : os.cpus().length;
-logger.debug(`[Cluster] Available logical cores: ${availableCores}`);
-const numWorkers = env.cluster?.workers || availableCores;
-logger.debug(`[Cluster] Configured number of workers: ${numWorkers}`);
 
-// Calculate worker-level threadpool size (default 4 to 8 is optimal per worker process)
-const calculatedPoolSize = Math.min(128, Math.max(4, Math.floor(availableCores / 2) || 4));
+// Container & environment detection (Render, Railway, Docker)
+const isContainerEnv = Boolean(process.env.RENDER || process.env.CONTAINER);
+
+// Render sets WEB_CONCURRENCY automatically (usually 1 on free/starter tiers)
+// In production or containerized environments, default to 1 worker unless explicitly configured
+const configuredWorkers = process.env.WEB_CONCURRENCY
+  ? parseInt(process.env.WEB_CONCURRENCY, 10)
+  : env.cluster?.workers || (env.isProduction || isContainerEnv ? 1 : availableCores);
+
+const numWorkers = Math.max(1, configuredWorkers);
+
+// Only fork cluster processes if clustering is enabled AND more than 1 worker is requested.
+// On 1 worker (e.g. Render 512MB RAM tier), run as a single process without supervisor overhead.
+const isClusterEnabled = Boolean(env.cluster?.enabled && numWorkers > 1);
+
+// Configure threadpool size: 4 on production/constrained containers, 16 on local development
 process.env.UV_THREADPOOL_SIZE = (
-  env.uvThreadpoolSize || calculatedPoolSize
+  env.uvThreadpoolSize || (env.isProduction || isContainerEnv || numWorkers <= 1 ? 4 : 16)
 ).toString();
+
+logger.debug(`[Cluster] Available logical cores: ${availableCores}, Configured workers: ${numWorkers}`);
 logger.debug(`[Cluster] Configured UV_THREADPOOL_SIZE: ${process.env.UV_THREADPOOL_SIZE}`);
 
-// PRIMARY PROCESS (Supervisor)
-
-if (env.cluster?.enabled && cluster.isPrimary) {
+// PRIMARY PROCESS (Supervisor) — Only active if clustering with multiple workers
+if (isClusterEnabled && cluster.isPrimary) {
   console.log(`[Cluster] Available logical cores: ${availableCores}`);
-  console.log(`[Cluster] Primary PID ${process.pid} is starting ${numWorkers} workers...`);
+  console.log(`[Cluster] Primary PID ${process.pid} is starting ${numWorkers} worker(s)...`);
   console.log(`[Cluster] Configured UV_THREADPOOL_SIZE per worker: ${process.env.UV_THREADPOOL_SIZE}`);
 
   // Fork child workers
@@ -61,15 +73,20 @@ if (env.cluster?.enabled && cluster.isPrimary) {
 
 } else {
   
-  // WORKER PROCESS (HTTP + DB)
+  // WORKER / SINGLE PROCESS (HTTP + DB)
   
   const app = require("./app");
 
   let server;
 
-  // Connect to MongoDB per worker process
+  // Connect to MongoDB with bounded connection pool per process
   mongoose
-    .connect(env.db.uri)
+    .connect(env.db.uri, {
+      maxPoolSize: env.isProduction || isContainerEnv ? 10 : 25,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    })
+
     .then(() => {
       console.log(`[Database] Worker ${process.pid} connected to MongoDB`);
 

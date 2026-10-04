@@ -1,15 +1,17 @@
 const path = require("path");
 const dotenv = require("dotenv");
 
-// Load environment configuration once. This file lives in backend/.env.
+const isProduction = (process.env.NODE_ENV || "").trim().toUpperCase() === "PRODUCTION" || Boolean(process.env.RENDER);
+
+// Load environment configuration if file exists (local dev). In production (e.g. Render), vars are injected directly by the platform.
 const envPath = path.resolve(__dirname, "../config/config.env");
 const dotenvResult = dotenv.config({ path: envPath });
 
-if (dotenvResult.error && dotenvResult.error.code === "ENOENT") {
+
+if (!isProduction && dotenvResult.error && dotenvResult.error.code === "ENOENT") {
   console.warn(`[Config Warning] Environment file not found: ${envPath}`);
 }
 
-const isProduction = (process.env.NODE_ENV || "").trim().toUpperCase() === "PRODUCTION";
 
 // Clean quotes and whitespace commonly introduced when pasting into hosting platforms (e.g. Render)
 const cleanEnv = (val, fallback = "") => {
@@ -78,9 +80,16 @@ const env = {
     apiKey: cleanEnv(process.env.GROQ_API_KEY),
     model: cleanEnv(process.env.GROQ_MODEL, "openai/gpt-oss-20b"),
   },
-  uvThreadpoolSize: parseInt(cleanEnv(process.env.UV_THREADPOOL_SIZE), 10) || 16,
+  uvThreadpoolSize: parseInt(cleanEnv(process.env.UV_THREADPOOL_SIZE), 10) || (isProduction ? 4 : 16),
   cluster: {
     enabled: cleanEnv(process.env.CLUSTER) === "true",
+    workers: process.env.WEB_CONCURRENCY
+      ? parseInt(cleanEnv(process.env.WEB_CONCURRENCY), 10)
+      : process.env.WORKERS
+      ? parseInt(cleanEnv(process.env.WORKERS), 10)
+      : isProduction
+      ? 1
+      : null,
   },
 };
 

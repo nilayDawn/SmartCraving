@@ -4,12 +4,13 @@
   "description": "Food Ordering Website using MERN Stack.This website is created for particular restaurant.",
   "main": "server.js",
   "scripts": {
-    "start": "nodemon server.js",
+    "start": "node --max-old-space-size=400 server.js",
     "dev": "NODE_ENV=DEVELOPMENT nodemon server.js",
-    "prod": "NODE_ENV=PRODUCTION nodemon server.js",
+    "prod": "NODE_ENV=PRODUCTION node --max-old-space-size=400 server.js",
     "seeder": "node utils/seeder.js",
     "cluster": "CLUSTER=true node server.js",
     "test": "node tests/smoke.test.js"
+
   },
   "author": "Nilay Dawn",
   "license": "ISC",
